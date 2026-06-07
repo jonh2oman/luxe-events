@@ -1,0 +1,344 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useAuth } from "@/context/AuthContext";
+import { LogIn, LogOut, User, X, KeyRound, ShieldCheck } from "lucide-react";
+
+export default function Navbar() {
+  const { user, loading, login, signUp, logout } = useAuth();
+  const [modalOpen, setModalOpen] = useState(false);
+  const [isSignUp, setIsSignUp] = useState(false);
+  
+  // Form state
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+  const [error, setError] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+
+  const handleAuthSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setAuthLoading(true);
+
+    try {
+      if (isSignUp) {
+        if (!name.trim()) throw new Error("Name is required");
+        await signUp(name, email, password);
+      } else {
+        await login(email, password);
+      }
+      setModalOpen(false);
+      // Reset form
+      setEmail("");
+      setPassword("");
+      setName("");
+    } catch (err) {
+      setError(err.message || "Authentication failed. Check your inputs.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <header className="glass-panel" style={{
+        position: "sticky",
+        top: "16px",
+        zIndex: 100,
+        margin: "0 24px",
+        padding: "16px 32px",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        borderRadius: "30px",
+        border: "1px solid rgba(255, 255, 255, 0.08)",
+        boxShadow: "0 10px 30px rgba(0, 0, 0, 0.4)",
+        background: "rgba(10, 15, 30, 0.65)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        marginTop: "16px"
+      }}>
+        {/* Brand Logo */}
+        <Link href="/" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span style={{
+            fontFamily: "var(--font-serif)",
+            fontSize: "1.6rem",
+            fontWeight: "700",
+            letterSpacing: "1px",
+            background: "linear-gradient(135deg, #f3e5ab 0%, #d4af37 50%, #aa8010 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent"
+          }}>LUXE</span>
+          <span style={{
+            fontSize: "0.8rem",
+            fontWeight: "600",
+            textTransform: "uppercase",
+            letterSpacing: "3px",
+            color: "var(--text-secondary)",
+            marginTop: "4px"
+          }}>Events</span>
+        </Link>
+        
+        {/* Navigation Links */}
+        <nav style={{ display: "flex", gap: "24px", alignItems: "center" }}>
+          <Link href="/" style={{
+            fontSize: "0.95rem",
+            fontWeight: "500",
+            color: "var(--text-secondary)",
+            transition: "color 0.3s"
+          }} className="nav-link">
+            Discover
+          </Link>
+          <Link href="/dashboard/attendee" style={{
+            fontSize: "0.95rem",
+            fontWeight: "500",
+            color: "var(--text-secondary)",
+            transition: "color 0.3s"
+          }} className="nav-link">
+            My Tickets
+          </Link>
+          <Link href="/dashboard/organizer" style={{
+            fontSize: "0.95rem",
+            fontWeight: "500",
+            color: "var(--text-secondary)",
+            transition: "color 0.3s"
+          }} className="nav-link">
+            Organizer Panel
+          </Link>
+        </nav>
+        
+        {/* Auth section */}
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          {loading ? (
+            <div style={{ width: "80px", height: "30px", background: "rgba(255,255,255,0.03)", borderRadius: "15px" }} className="shimmer-bg"></div>
+          ) : user ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+              {/* Profile badge */}
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                background: "rgba(255, 255, 255, 0.04)",
+                padding: "6px 14px",
+                borderRadius: "20px",
+                border: "1px solid rgba(255, 255, 255, 0.05)"
+              }}>
+                <div style={{
+                  width: "8px",
+                  height: "8px",
+                  borderRadius: "50%",
+                  background: "#10b981"
+                }}></div>
+                <span style={{ fontSize: "0.85rem", fontWeight: "500", color: "var(--text-primary)" }}>
+                  {user.name}
+                </span>
+              </div>
+              
+              <button 
+                onClick={logout}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--text-muted)",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  fontSize: "0.85rem"
+                }}
+                className="nav-link"
+              >
+                <LogOut size={14} /> Sign Out
+              </button>
+            </div>
+          ) : (
+            <button 
+              onClick={() => { setError(""); setModalOpen(true); }}
+              className="btn-primary" 
+              style={{
+                padding: "8px 20px",
+                borderRadius: "20px",
+                fontSize: "0.85rem",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px"
+              }}
+            >
+              <LogIn size={14} /> Access Platform
+            </button>
+          )}
+        </div>
+      </header>
+
+      {/* Floating Glassmorphic Authentication Modal */}
+      {modalOpen && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: "rgba(6, 8, 19, 0.75)",
+          backdropFilter: "blur(8px)",
+          zIndex: 1000,
+          display: "flex",
+          justifyContent: "center",
+          alignItems: "center",
+          padding: "20px"
+        }}>
+          <div 
+            className="glass-panel-gold" 
+            style={{
+              width: "100%",
+              maxWidth: "420px",
+              padding: "40px 32px",
+              boxShadow: "0 25px 60px rgba(0,0,0,0.8)",
+              border: "1px solid rgba(212, 175, 55, 0.25)",
+              animation: "modalFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)"
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "28px" }}>
+              <div>
+                <span style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--accent-gold)", fontWeight: "700", letterSpacing: "1px" }}>Secure Entry</span>
+                <h3 style={{ fontFamily: "var(--font-serif)", fontSize: "1.8rem", fontWeight: "700", marginTop: "4px" }}>
+                  {isSignUp ? "Create Profile" : "Portal Access"}
+                </h3>
+              </div>
+              <button 
+                onClick={() => setModalOpen(false)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--text-muted)",
+                  cursor: "pointer"
+                }}
+                className="nav-link"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {error && (
+              <div style={{
+                background: "rgba(239, 68, 68, 0.1)",
+                border: "1px solid #ef4444",
+                color: "#ef4444",
+                padding: "10px 14px",
+                borderRadius: "8px",
+                fontSize: "0.85rem",
+                marginBottom: "20px"
+              }}>
+                {error}
+              </div>
+            )}
+
+            {/* Auth Form */}
+            <form onSubmit={handleAuthSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {isSignUp && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Username</label>
+                  <input 
+                    type="text" 
+                    required 
+                    placeholder="Enter your name" 
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="glass-input" 
+                  />
+                </div>
+              )}
+              
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Email Address</label>
+                <input 
+                  type="email" 
+                  required 
+                  placeholder="name@domain.com" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="glass-input" 
+                />
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Access Key / Password</label>
+                <input 
+                  type="password" 
+                  required 
+                  placeholder="••••••••" 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="glass-input" 
+                />
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={authLoading}
+                className="btn-primary" 
+                style={{
+                  padding: "12px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "8px",
+                  fontWeight: "600",
+                  marginTop: "12px"
+                }}
+              >
+                {authLoading ? (
+                  <span>Authenticating...</span>
+                ) : (
+                  <>
+                    <KeyRound size={16} /> {isSignUp ? "Initialize Profile" : "Unlock Portal"}
+                  </>
+                )}
+              </button>
+            </form>
+
+            {/* Toggle Sign Up / Sign In */}
+            <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "20px", marginTop: "24px", textAlign: "center" }}>
+              <button 
+                onClick={() => { setIsSignUp(!isSignUp); setError(""); }}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "var(--text-secondary)",
+                  fontSize: "0.85rem",
+                  cursor: "pointer"
+                }}
+                className="nav-link"
+              >
+                {isSignUp ? "Already registered? Sign In" : "Need a premium profile? Register here"}
+              </button>
+            </div>
+            
+            <p style={{
+              fontSize: "0.7rem",
+              color: "var(--text-muted)",
+              textAlign: "center",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "4px",
+              marginTop: "16px"
+            }}>
+              <ShieldCheck size={11} color="var(--accent-gold)" /> Secure Sandbox Mode Enabled.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Animation */}
+      <style jsx global>{`
+        @keyframes modalFadeIn {
+          from { opacity: 0; transform: scale(0.95); }
+          to { opacity: 1; transform: scale(1); }
+        }
+      `}</style>
+    </>
+  );
+}

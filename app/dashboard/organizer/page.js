@@ -1,0 +1,638 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { Sparkles, Calendar, Plus, DollarSign, Users, Award, TrendingUp, Cpu, CheckCircle, Camera } from "lucide-react";
+import { database } from "@/lib/database";
+
+export default function OrganizerDashboard() {
+  const [analytics, setAnalytics] = useState(null);
+  const [events, setEvents] = useState([]);
+  const [layoutTemplates, setLayoutTemplates] = useState([]);
+  const [selectedTemplateName, setSelectedTemplateName] = useState("");
+  
+  // AI assist state
+  const [prompt, setPrompt] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResponse, setAiResponse] = useState(null);
+  const [loadingStep, setLoadingStep] = useState(0);
+
+  // New Event form state
+  const [formTitle, setFormTitle] = useState("");
+  const [formSubtitle, setFormSubtitle] = useState("");
+  const [formDesc, setFormDesc] = useState("");
+  const [formDate, setFormDate] = useState("");
+  const [formTime, setFormTime] = useState("");
+  const [formLoc, setFormLoc] = useState("");
+  const [formPrice, setFormPrice] = useState(40);
+  const [eventAdded, setEventAdded] = useState(false);
+
+  useEffect(() => {
+    setAnalytics(database.getOrganizerAnalytics());
+    database.getEvents().then(allEvents => {
+      setEvents(allEvents);
+    });
+
+    // Load custom layouts
+    const templates = localStorage.getItem("luxe_layout_templates");
+    if (templates) {
+      const parsed = JSON.parse(templates);
+      setLayoutTemplates(parsed);
+      if (parsed.length > 0) {
+        setSelectedTemplateName(parsed[0].name);
+      }
+    }
+  }, []);
+
+  const aiLoadingSteps = [
+    "Analyzing target market & music demographics...",
+    "Querying Gemini models for optimal pricing strategy...",
+    "Drafting premium copy & marketing tagline...",
+    "Generating suggested timeline & schedules..."
+  ];
+
+  // AI copywriting prompt helper
+  const handleAIAssist = () => {
+    if (!prompt.trim()) return;
+    setAiLoading(true);
+    setAiResponse(null);
+    setLoadingStep(0);
+
+    // Animate loader steps
+    const stepInterval = setInterval(() => {
+      setLoadingStep(prev => {
+        if (prev < aiLoadingSteps.length - 1) {
+          return prev + 1;
+        }
+        clearInterval(stepInterval);
+        return prev;
+      });
+    }, 1000);
+
+    setTimeout(() => {
+      clearInterval(stepInterval);
+      setAiLoading(false);
+      
+      // Seed values based on input
+      const matchesJazz = prompt.toLowerCase().includes("jazz") || prompt.toLowerCase().includes("lounge") || prompt.toLowerCase().includes("classical");
+      const matchesElectro = prompt.toLowerCase().includes("rave") || prompt.toLowerCase().includes("techno") || prompt.toLowerCase().includes("club");
+
+      let generatedCopy = {
+        title: "Neon Soundscapes: An Ambient Evening",
+        subtitle: "Immersive audio-visual syntheses and digital reflections.",
+        description: "Step into an auditory sanctuary where soundscapes come alive. Luxe Events presents an exclusive performance combining multi-instrumental synthesis, spatial acoustics, and real-time holographic art mapping. Ideal for enthusiasts of modern ambient wave and visual installations.",
+        price: 55,
+        tiers: [
+          { name: "General Admission", price: 55, description: "Standing access to the main sound floor." },
+          { name: "VIP Acoustical Ring", price: 110, description: "Elevated pod seating designed for optimized sonic clarity. Includes artist talk." }
+        ],
+        timeline: [
+          { time: "19:00", event: "Doors Open & Ambient Soundscape Warmup" },
+          { time: "20:00", event: "Act I: Synthesizer & Spatial Projections" },
+          { time: "21:30", event: "Act II: Live Audiovisual Collaboration" },
+          { time: "22:30", event: "Artist Meet-and-Greet in VIP Lounge" }
+        ]
+      };
+
+      if (matchesJazz) {
+        generatedCopy = {
+          title: "Vervain Brass: Autumn Soul Sessions",
+          subtitle: "A classy night of modern brass solos and smooth blues bass.",
+          description: "Indulge in a curated jazz experience. This exclusive evening features the legendary Vervain Trio playing acoustic soul standards with special guest vocalists. Staged inside our minimalist glass greenhouse, providing a stunning natural backdrop of the autumn night skyline.",
+          price: 60,
+          tiers: [
+            { name: "Standard Bistro Seating", price: 60, description: "Standard seating at high-top tables." },
+            { name: "First Tier Stage Booth", price: 125, description: "VIP table directly beside the stage. Includes select bottle pairings." }
+          ],
+          timeline: [
+            { time: "18:30", event: "Doors & Champagne Welcome" },
+            { time: "19:30", event: "Vervain Trio Main Set (Acoustic)" },
+            { time: "21:00", event: "Vervain Session Fusion (Electric)" },
+            { time: "22:00", event: "Late Night After-Jam & Bar Lounge Open" }
+          ]
+        };
+      } else if (matchesElectro) {
+        generatedCopy = {
+          title: "Glitch Reactor: Cybernetic Rave",
+          subtitle: "High-octane industrial techno under an iron scaffold warehouse.",
+          description: "Prepare your senses for a sonic assault. Glitch Reactor features underground electronic pioneers performing live modular synth sets inside the dark warehouse vaults. Surrounded by dynamic laser rigs and strobing gold lights, this is a premium clubbing event for nightlife purists.",
+          price: 45,
+          tiers: [
+            { name: "Warehouse Core Floor", price: 45, description: "General entry to main warehouse hangar." },
+            { name: "Upper Rail VIP Mezzanine", price: 85, description: "Premium view of laser production, express skip-the-line entrance, and private bar." }
+          ],
+          timeline: [
+            { time: "22:00", event: "Doors Open & Resident DJ Set" },
+            { time: "23:30", event: "Modular Synthesis live hardware set" },
+            { time: "01:00", event: "Glitch Reactor headliner set" },
+            { time: "04:00", event: "Curtain Close" }
+          ]
+        };
+      }
+
+      setAiResponse(generatedCopy);
+
+      // Auto-populate the event form with AI generated copy
+      setFormTitle(generatedCopy.title);
+      setFormSubtitle(generatedCopy.subtitle);
+      setFormDesc(generatedCopy.description);
+      setFormPrice(generatedCopy.price);
+    }, 4000);
+  };
+
+  // Handle manual/AI event submission
+  const handleSubmitEvent = async (e) => {
+    e.preventDefault();
+    if (!formTitle || !formDate || !formLoc) return;
+
+    const ticketTiers = aiResponse?.tiers || [
+      { name: "General Admission", price: parseInt(formPrice), description: "Access to the event." }
+    ];
+
+    // Find selected layout template
+    const activeTemplate = layoutTemplates.find(t => t.name === selectedTemplateName);
+    let seats = null;
+
+    if (activeTemplate) {
+      seats = activeTemplate.grid.map(cell => ({
+        id: cell.id,
+        row: cell.row,
+        number: cell.number,
+        tier: cell.tier === "Corridor / Aisle" ? "Corridor / Aisle" : cell.tier,
+        price: cell.tier === "VIP Lounge" && aiResponse ? aiResponse.tiers[1]?.price || 120 : cell.tier === "VIP Terrace" && aiResponse ? aiResponse.tiers[1]?.price || 85 : parseInt(formPrice),
+        isBooked: cell.tier === "Corridor / Aisle", // Corridor blocks are immediately "booked" to disable selection
+        selectedBy: null
+      }));
+    }
+
+    const newEvent = await database.createEvent({
+      title: formTitle,
+      subtitle: formSubtitle || "A premium experience host by Luxe.",
+      description: formDesc || "No description provided.",
+      category: "Music",
+      date: formDate,
+      time: formTime || "19:00 - 22:00",
+      location: formLoc,
+      price: parseInt(formPrice),
+      image: "/images/indie_showcase.jpg", // Default placeholder from generated assets
+      organizer: "Luxe Owner",
+      ticketTiers,
+      seats, // Pass custom seats map!
+      cols: activeTemplate ? activeTemplate.cols : 8
+    });
+
+    if (newEvent) {
+      setEventAdded(true);
+      const allEvents = await database.getEvents();
+      setEvents(allEvents);
+      
+      // Clear form
+      setFormTitle("");
+      setFormSubtitle("");
+      setFormDesc("");
+      setFormDate("");
+      setFormTime("");
+      setFormLoc("");
+      setFormPrice(40);
+      setAiResponse(null);
+
+      setTimeout(() => {
+        setEventAdded(false);
+      }, 3000);
+    }
+  };
+
+  if (!analytics) return null;
+
+  return (
+    <main style={{ padding: "0 24px", maxWidth: "1250px", margin: "0 auto", marginTop: "40px" }}>
+      <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "2.4rem", marginBottom: "32px" }}>Organizer Dashboard</h1>
+
+      {/* Grid of basic metrics widgets */}
+      <section style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+        gap: "24px",
+        marginBottom: "40px"
+      }}>
+        <div className="glass-panel" style={{ padding: "24px", display: "flex", alignItems: "center", gap: "16px" }}>
+          <div style={{ background: "rgba(212, 175, 55, 0.1)", padding: "12px", borderRadius: "12px", color: "var(--accent-gold)" }}>
+            <DollarSign size={24} />
+          </div>
+          <div>
+            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block" }}>Total Revenue</span>
+            <span style={{ fontSize: "1.6rem", fontWeight: "700" }}>${analytics.totalRevenue.toLocaleString()}</span>
+          </div>
+        </div>
+
+        <div className="glass-panel" style={{ padding: "24px", display: "flex", alignItems: "center", gap: "16px" }}>
+          <div style={{ background: "rgba(212, 175, 55, 0.1)", padding: "12px", borderRadius: "12px", color: "var(--accent-gold)" }}>
+            <Users size={24} />
+          </div>
+          <div>
+            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block" }}>Tickets Sold</span>
+            <span style={{ fontSize: "1.6rem", fontWeight: "700" }}>{analytics.totalTicketsSold}</span>
+          </div>
+        </div>
+
+        <div className="glass-panel" style={{ padding: "24px", display: "flex", alignItems: "center", gap: "16px" }}>
+          <div style={{ background: "rgba(212, 175, 55, 0.1)", padding: "12px", borderRadius: "12px", color: "var(--accent-gold)" }}>
+            <Award size={24} />
+          </div>
+          <div>
+            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block" }}>Active Campaigns</span>
+            <span style={{ fontSize: "1.6rem", fontWeight: "700" }}>{analytics.activeEvents}</span>
+          </div>
+        </div>
+
+        <Link href="/dashboard/organizer/scan" style={{ display: "block" }}>
+          <div className="glass-panel-gold" style={{ 
+            padding: "24px", 
+            display: "flex", 
+            alignItems: "center", 
+            gap: "16px", 
+            height: "100%", 
+            cursor: "pointer", 
+            transition: "transform 0.3s",
+            border: "1px solid rgba(212, 175, 55, 0.2)"
+          }}
+               onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-4px)"}
+               onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}>
+            <div style={{ background: "rgba(212, 175, 55, 0.15)", padding: "12px", borderRadius: "12px", color: "var(--accent-gold)" }}>
+              <Camera size={24} />
+            </div>
+            <div>
+              <span style={{ fontSize: "0.8rem", color: "var(--accent-gold)", fontWeight: "700", display: "block", textTransform: "uppercase" }}>Scan & Check-in</span>
+              <span style={{ fontSize: "1.1rem", fontWeight: "600", color: "var(--text-primary)" }}>Ticket Verifier</span>
+            </div>
+          </div>
+        </Link>
+      </section>
+
+      {/* Analytics Charts and Create Event Forms */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "1.2fr 1fr",
+        gap: "40px",
+        alignItems: "start",
+        marginBottom: "60px"
+      }}>
+        
+        {/* Left column: AI Generator & Event Creator */}
+        <section style={{ display: "flex", flexDirection: "column", gap: "32px" }}>
+          
+          {/* AI Strategy Assister */}
+          <div className="glass-panel-gold" style={{ padding: "32px" }}>
+            <h2 style={{ fontSize: "1.3rem", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+              <Cpu size={18} color="var(--accent-gold)" /> AI Strategy & Copy Creator
+            </h2>
+            <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", fontWeight: "300", marginBottom: "20px" }}>
+              Describe your event idea in plain text (e.g. \"intimate rooftop jazz session with cocktails\" or \"underground industrial warehouse techno party\") and let our AI agent draft the marketing tagline, ticketing structure, and full description.
+            </p>
+
+            <div style={{ display: "flex", gap: "12px", marginBottom: "20px" }}>
+              <input 
+                type="text"
+                placeholder="What kind of concert/event are you planning?"
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                style={{
+                  flex: 1,
+                  background: "rgba(255, 255, 255, 0.03)",
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                  borderRadius: "10px",
+                  padding: "12px 16px",
+                  color: "var(--text-primary)",
+                  outline: "none"
+                }}
+              />
+              <button 
+                onClick={handleAIAssist}
+                disabled={aiLoading}
+                className="btn-primary"
+                style={{
+                  padding: "0 24px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  whiteSpace: "nowrap"
+                }}
+              >
+                <Sparkles size={16} /> Assist Me
+              </button>
+            </div>
+
+            {/* AI Loading state */}
+            {aiLoading && (
+              <div style={{
+                padding: "24px",
+                background: "rgba(255,255,255,0.01)",
+                border: "1px dashed rgba(212,175,55,0.2)",
+                borderRadius: "12px",
+                textAlign: "center"
+              }} className="shimmer-bg">
+                <div style={{ display: "inline-block", border: "3px solid rgba(212,175,55,0.1)", borderTop: "3px solid var(--accent-gold)", borderRadius: "50%", width: "24px", height: "24px", animation: "spin 1s linear infinite", marginBottom: "12px" }}></div>
+                <p style={{ fontSize: "0.9rem", color: "var(--accent-gold)" }}>{aiLoadingSteps[loadingStep]}</p>
+              </div>
+            )}
+
+            {/* AI Results panel */}
+            {aiResponse && (
+              <div style={{
+                padding: "24px",
+                background: "rgba(212, 175, 55, 0.03)",
+                border: "1px solid rgba(212, 175, 55, 0.2)",
+                borderRadius: "16px",
+                marginTop: "20px"
+              }}>
+                <span style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--accent-gold)", fontWeight: "700", display: "flex", alignItems: "center", gap: "4px", marginBottom: "8px" }}>
+                  <CheckCircle size={12} /> AI Strategy Generated (Autofilled Below)
+                </span>
+                
+                <h4 style={{ fontSize: "1.1rem", fontWeight: "600", marginBottom: "6px" }}>{aiResponse.title}</h4>
+                <p style={{ fontStyle: "italic", fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "12px" }}>\"{aiResponse.subtitle}\"</p>
+                
+                <div style={{ marginBottom: "16px", fontSize: "0.85rem" }}>
+                  <span style={{ fontWeight: "600", color: "var(--text-primary)" }}>Suggested Pricing:</span>
+                  <div style={{ display: "flex", gap: "12px", marginTop: "4px" }}>
+                    {aiResponse.tiers.map((t, idx) => (
+                      <span key={idx} style={{ background: "rgba(255,255,255,0.04)", padding: "2px 8px", borderRadius: "4px", border: "1px solid rgba(255,255,255,0.06)" }}>
+                        {t.name}: ${t.price}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ fontSize: "0.85rem" }}>
+                  <span style={{ fontWeight: "600", color: "var(--text-primary)" }}>Event Timeline:</span>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginTop: "4px", background: "rgba(0,0,0,0.2)", padding: "10px", borderRadius: "8px" }}>
+                    {aiResponse.timeline.map((item, idx) => (
+                      <div key={idx} style={{ display: "flex", gap: "8px" }}>
+                        <span style={{ color: "var(--accent-gold)", fontWeight: "700" }}>{item.time}</span>
+                        <span>{item.event}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Event creation form */}
+          <div className="glass-panel" style={{ padding: "32px" }}>
+            <h2 style={{ fontSize: "1.3rem", fontWeight: "600", marginBottom: "24px" }}>Launch New Experience</h2>
+            
+            {eventAdded && (
+              <div style={{
+                background: "rgba(16, 185, 129, 0.1)",
+                border: "1px solid #10b981",
+                color: "#10b981",
+                padding: "12px 16px",
+                borderRadius: "8px",
+                marginBottom: "20px",
+                fontSize: "0.9rem",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px"
+              }}>
+                <CheckCircle size={16} /> Experience successfully listed on the active Luxe discovery board!
+              </div>
+            )}
+
+            <form onSubmit={handleSubmitEvent} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Title</label>
+                  <input 
+                    type="text" 
+                    required 
+                    placeholder="Event Name" 
+                    value={formTitle}
+                    onChange={(e) => setFormTitle(e.target.value)}
+                    className="glass-input" 
+                  />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Tagline</label>
+                  <input 
+                    type="text" 
+                    placeholder="Brief Tagline" 
+                    value={formSubtitle}
+                    onChange={(e) => setFormSubtitle(e.target.value)}
+                    className="glass-input" 
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Description</label>
+                <textarea 
+                  rows="3" 
+                  placeholder="Tell your attendees about the experience..." 
+                  value={formDesc}
+                  onChange={(e) => setFormDesc(e.target.value)}
+                  className="glass-input"
+                  style={{ resize: "none" }}
+                />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Date</label>
+                  <input 
+                    type="date" 
+                    required 
+                    value={formDate}
+                    onChange={(e) => setFormDate(e.target.value)}
+                    className="glass-input" 
+                  />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Time Range</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. 19:00 - 22:00" 
+                    value={formTime}
+                    onChange={(e) => setFormTime(e.target.value)}
+                    className="glass-input" 
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Venue / Location</label>
+                  <input 
+                    type="text" 
+                    required 
+                    placeholder="Venue, City" 
+                    value={formLoc}
+                    onChange={(e) => setFormLoc(e.target.value)}
+                    className="glass-input" 
+                  />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Base Price ($)</label>
+                  <input 
+                    type="number" 
+                    required 
+                    value={formPrice}
+                    onChange={(e) => setFormPrice(e.target.value)}
+                    className="glass-input" 
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Seating Layout Template</label>
+                  <Link href="/dashboard/organizer/design-layout" style={{ fontSize: "0.75rem", color: "var(--accent-gold)" }}>
+                    + Design Custom Layout
+                  </Link>
+                </div>
+                <select
+                  value={selectedTemplateName}
+                  onChange={(e) => setSelectedTemplateName(e.target.value)}
+                  className="glass-input"
+                  style={{ background: "rgba(12, 15, 36, 0.8)", border: "1px solid rgba(255, 255, 255, 0.08)", cursor: "pointer" }}
+                >
+                  {layoutTemplates.map((template, idx) => (
+                    <option key={idx} value={template.name} style={{ background: "#0c0f24", color: "#f8fafc" }}>
+                      {template.name} ({template.rows}x{template.cols} Grid)
+                    </option>
+                  ))}
+                  <option value="" style={{ background: "#0c0f24", color: "#f8fafc" }}>Default Rectangular Grid (40 seats)</option>
+                </select>
+              </div>
+
+              <button type="submit" className="btn-primary" style={{ display: "flex", alignItems: "center", gap: "8px", justifyContent: "center", marginTop: "8px" }}>
+                <Plus size={16} /> Publish Experience
+              </button>
+            </form>
+          </div>
+
+        </section>
+
+        {/* Right column: Analytics graphs */}
+        <section style={{ display: "flex", flexDirection: "column", gap: "32px" }}>
+          
+          {/* Sales velocity mock graph */}
+          <div className="glass-panel" style={{ padding: "32px" }}>
+            <h3 style={{ fontSize: "1.1rem", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px", marginBottom: "24px" }}>
+              <TrendingUp size={16} color="var(--accent-gold)" /> Sales Velocity (Weekly)
+            </h3>
+            
+            {/* Visual HTML Bar chart */}
+            <div style={{
+              display: "flex",
+              alignItems: "flex-end",
+              justifyContent: "space-between",
+              height: "200px",
+              padding: "0 10px",
+              borderBottom: "1px solid rgba(255,255,255,0.08)",
+              marginBottom: "16px"
+            }}>
+              {analytics.salesVelocity.map((day, idx) => {
+                const maxSales = Math.max(...analytics.salesVelocity.map(d => d.sales));
+                const barHeight = (day.sales / maxSales) * 160; // Max height 160px
+                
+                return (
+                  <div key={idx} style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    flex: 1,
+                    gap: "8px"
+                  }}>
+                    <span style={{ fontSize: "0.75rem", fontWeight: "600" }}>{day.sales}</span>
+                    <div style={{
+                      width: "24px",
+                      height: `${barHeight}px`,
+                      background: "linear-gradient(to top, var(--accent-gold) 0%, #aa8010 100%)",
+                      borderRadius: "4px 4px 0 0",
+                      boxShadow: "0 4px 10px rgba(212, 175, 55, 0.15)",
+                      transition: "height 0.5s ease"
+                    }} className="shimmer-bg"></div>
+                    <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginTop: "4px" }}>{day.date.split(" ")[1]}</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", textAlign: "center" }}>Daily ticket conversions (June 1 - June 7)</p>
+          </div>
+
+          {/* Demographics chart */}
+          <div className="glass-panel" style={{ padding: "32px" }}>
+            <h3 style={{ fontSize: "1.1rem", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px", marginBottom: "24px" }}>
+              <Users size={16} color="var(--accent-gold)" /> Attendee Demographics
+            </h3>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              {analytics.demographics.map((demo, idx) => (
+                <div key={idx} style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem" }}>
+                    <span style={{ fontWeight: "500" }}>{demo.group} Age Group</span>
+                    <span style={{ fontWeight: "700", color: "var(--accent-gold)" }}>{demo.percentage}%</span>
+                  </div>
+                  <div style={{
+                    height: "8px",
+                    width: "100%",
+                    background: "rgba(255,255,255,0.02)",
+                    borderRadius: "4px",
+                    overflow: "hidden",
+                    border: "1px solid rgba(255,255,255,0.05)"
+                  }}>
+                    <div style={{
+                      width: `${demo.percentage}%`,
+                      height: "100%",
+                      background: "linear-gradient(90deg, #aa8010, var(--accent-gold))",
+                      borderRadius: "4px"
+                    }}></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Active Campaign lists */}
+          <div className="glass-panel" style={{ padding: "32px" }}>
+            <h3 style={{ fontSize: "1.1rem", fontWeight: "600", marginBottom: "20px" }}>Your Listed Campaigns</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {events.map((event) => (
+                <div 
+                  key={event.id}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    padding: "12px 16px",
+                    borderRadius: "8px",
+                    background: "rgba(255,255,255,0.01)",
+                    border: "1px solid rgba(255,255,255,0.03)"
+                  }}
+                >
+                  <div>
+                    <span style={{ fontWeight: "600", fontSize: "0.9rem", display: "block" }}>{event.title}</span>
+                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{event.date}</span>
+                  </div>
+                  <span style={{ fontSize: "0.8rem", color: "#10b981", background: "rgba(16, 185, 129, 0.1)", padding: "2px 8px", borderRadius: "10px", fontWeight: "600" }}>
+                    Active
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </section>
+      </div>
+
+      <style jsx global>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      `}</style>
+    </main>
+  );
+}
