@@ -6,7 +6,7 @@ import Link from "next/link";
 import { 
   Sparkles, Calendar, Plus, DollarSign, Users, Award, TrendingUp, Cpu, 
   CheckCircle, Camera, Tag, ClipboardList, Layout, QrCode, Bell, CreditCard, 
-  ArrowRight, ShieldCheck, ArrowUpRight 
+  ArrowRight, ShieldCheck, ArrowUpRight, Palette, ShoppingBag 
 } from "lucide-react";
 import { database } from "@/lib/database";
 import { useAuth } from "@/context/AuthContext";
@@ -692,6 +692,54 @@ export default function OrganizerDashboard() {
             </div>
             <h3 style={{ fontSize: "0.95rem", fontWeight: "600", marginBottom: "4px" }}>{database.translate("gateScanner", user?.language)}</h3>
             <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: "1.3" }}>{database.translate("gateDesc", user?.language)}</p>
+          </div>
+        </Link>
+
+        {/* Ticket Designer */}
+        <Link href="/dashboard/organizer/ticket-designer" style={{ display: "block" }}>
+          <div className="glass-panel" style={{ 
+            padding: "20px", 
+            cursor: "pointer",
+            transition: "all 0.3s ease",
+            border: "1px solid rgba(255, 255, 255, 0.05)"
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-4px)";
+            e.currentTarget.style.borderColor = "var(--accent-gold)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.05)";
+          }}>
+            <div style={{ background: "rgba(212, 175, 55, 0.1)", padding: "10px", borderRadius: "10px", color: "var(--accent-gold)", width: "max-content", marginBottom: "14px" }}>
+              <Palette size={20} />
+            </div>
+            <h3 style={{ fontSize: "0.95rem", fontWeight: "600", marginBottom: "4px" }}>Ticket Designer</h3>
+            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: "1.3" }}>Customize digital ticket templates, foil layers, dynamic text tints, and security seals.</p>
+          </div>
+        </Link>
+
+        {/* VIP Service Queue */}
+        <Link href="/dashboard/organizer/orders" style={{ display: "block" }}>
+          <div className="glass-panel" style={{ 
+            padding: "20px", 
+            cursor: "pointer",
+            transition: "all 0.3s ease",
+            border: "1px solid rgba(255, 255, 255, 0.05)"
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-4px)";
+            e.currentTarget.style.borderColor = "var(--accent-gold)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.05)";
+          }}>
+            <div style={{ background: "rgba(244, 114, 182, 0.1)", padding: "10px", borderRadius: "10px", color: "#f472b6", width: "max-content", marginBottom: "14px" }}>
+              <ShoppingBag size={20} />
+            </div>
+            <h3 style={{ fontSize: "0.95rem", fontWeight: "600", marginBottom: "4px" }}>VIP Seat Service</h3>
+            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: "1.3" }}>Dispatch and track food/drink orders placed by VIP guests directly from their seating cards.</p>
           </div>
         </Link>
       </section>

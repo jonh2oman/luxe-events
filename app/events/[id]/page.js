@@ -41,6 +41,43 @@ function EventDetail() {
   const [appliedPromo, setAppliedPromo] = useState(null);
   const [promoError, setPromoError] = useState("");
   const [promoSuccess, setPromoSuccess] = useState("");
+  const [perspective3D, setPerspective3D] = useState(false);
+
+  const calculateSeatView = (seatId) => {
+    if (!seatId) return null;
+    const row = seatId.charAt(0);
+    const col = parseInt(seatId.substring(1), 10);
+    
+    let proximity = 100;
+    let angle = "Center";
+    let viewQuality = "Excellent";
+    
+    if ("ABC".includes(row)) {
+      proximity = 95 + (3 - "ABC".indexOf(row));
+      viewQuality = "Unobstructed Direct View";
+    } else if ("DEF".includes(row)) {
+      proximity = 75 + (3 - "DEF".indexOf(row)) * 5;
+      viewQuality = "Perfect Mid-Tier View";
+    } else {
+      proximity = 55 + (10 - col) * 2;
+      viewQuality = "Wide Elevated Panoramic View";
+    }
+    
+    if (col <= 3) {
+      angle = "Left Wing";
+    } else if (col >= 8) {
+      angle = "Right Wing";
+    } else {
+      angle = "Premium Center Stage";
+    }
+    
+    return {
+      proximity,
+      angle,
+      viewQuality,
+      description: `${angle} - ${proximity}% Stage Proximity. ${viewQuality}.`
+    };
+  };
 
   const handleApplyPromo = async () => {
     setPromoError("");
@@ -400,7 +437,30 @@ function EventDetail() {
         <section style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
           
           <div className="glass-panel" style={{ padding: "40px 32px", display: "flex", flexDirection: "column", alignItems: "center" }}>
-            <h2 style={{ fontSize: "1.4rem", fontWeight: "600", marginBottom: "30px", alignSelf: "flex-start" }}>Interactive Seating Grid</h2>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", marginBottom: "30px" }}>
+              <h2 style={{ fontSize: "1.4rem", fontWeight: "600", margin: 0 }}>Interactive Seating Grid</h2>
+              <button 
+                onClick={() => setPerspective3D(!perspective3D)}
+                className="btn-secondary"
+                style={{
+                  padding: "6px 14px",
+                  fontSize: "0.8rem",
+                  fontWeight: "600",
+                  background: perspective3D ? "linear-gradient(135deg, var(--accent-gold) 0%, #aa8010 100%)" : "rgba(255, 255, 255, 0.03)",
+                  color: perspective3D ? "#000" : "var(--text-secondary)",
+                  border: perspective3D ? "none" : "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: "20px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  cursor: "pointer",
+                  transition: "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)"
+                }}
+              >
+                <Sparkles size={12} />
+                <span>{perspective3D ? "3.5D View Active" : "Enable 3.5D View"}</span>
+              </button>
+            </div>
 
             {/* STAGE visualization */}
             <div style={{
@@ -413,11 +473,45 @@ function EventDetail() {
               display: "flex",
               justifyContent: "center",
               alignItems: "center",
-              marginBottom: "50px",
+              marginBottom: perspective3D ? "70px" : "50px",
               position: "relative",
-              boxShadow: "0 -10px 30px rgba(212, 175, 55, 0.1)"
+              boxShadow: "0 -10px 30px rgba(212, 175, 55, 0.15)",
+              transform: perspective3D ? "perspective(800px) rotateX(15deg) scale(1.05)" : "none",
+              transition: "all 0.6s cubic-bezier(0.25, 1, 0.5, 1)"
             }}>
               <span style={{ fontSize: "0.75rem", fontWeight: "700", letterSpacing: "5px", color: "var(--accent-gold)", textTransform: "uppercase" }}>STAGE</span>
+              
+              {/* Floating Stage Light Beams */}
+              {perspective3D && (
+                <>
+                  <div style={{
+                    position: "absolute",
+                    top: "38px",
+                    left: "20%",
+                    width: "2px",
+                    height: "120px",
+                    background: "linear-gradient(to bottom, rgba(212, 175, 55, 0.4) 0%, rgba(212, 175, 55, 0) 100%)",
+                    transform: "rotate(25deg)",
+                    transformOrigin: "top center",
+                    filter: "blur(2px)",
+                    pointerEvents: "none",
+                    animation: "pulse 3s infinite alternate"
+                  }} />
+                  <div style={{
+                    position: "absolute",
+                    top: "38px",
+                    right: "20%",
+                    width: "2px",
+                    height: "120px",
+                    background: "linear-gradient(to bottom, rgba(218, 119, 6, 0.4) 0%, rgba(218, 119, 6, 0) 100%)",
+                    transform: "rotate(-25deg)",
+                    transformOrigin: "top center",
+                    filter: "blur(2px)",
+                    pointerEvents: "none",
+                    animation: "pulse 3s infinite alternate-reverse"
+                  }} />
+                </>
+              )}
             </div>
 
             {/* Grid seating map */}
@@ -432,7 +526,10 @@ function EventDetail() {
               padding: "16px",
               background: "rgba(255, 255, 255, 0.01)",
               borderRadius: "16px",
-              border: "1px solid rgba(255, 255, 255, 0.03)"
+              border: "1px solid rgba(255, 255, 255, 0.03)",
+              transformStyle: "preserve-3d",
+              transform: perspective3D ? "perspective(1000px) rotateX(28deg) translateY(-10px) scale(0.96)" : "none",
+              transition: "transform 0.6s cubic-bezier(0.25, 1, 0.5, 1)"
             }}>
               {event.seats.map((seat) => {
                 const isSelected = selectedSeats.some(s => s.id === seat.id);
@@ -533,7 +630,8 @@ function EventDetail() {
                       fontSize: "0.7rem",
                       fontWeight: "700",
                       color: isSelected ? "#060813" : seat.isBooked ? "var(--text-muted)" : "var(--text-primary)",
-                      transition: "all 0.2s ease",
+                      transform: perspective3D ? "translateZ(6px) rotateX(-5deg)" : "none",
+                      transition: "all 0.2s ease, transform 0.6s ease",
                       position: "relative"
                     }}
                     title={seatTitle}
@@ -618,6 +716,78 @@ function EventDetail() {
               {selectedSeats.length > 0 ? (
                 <div>
                   <h4 style={{ fontSize: "1rem", fontWeight: "600", marginBottom: "16px" }}>Selected Seats</h4>
+
+                  {/* Virtual Seat View Simulator */}
+                  {(() => {
+                    const lastSeat = selectedSeats[selectedSeats.length - 1];
+                    const seatView = calculateSeatView(lastSeat.id);
+                    if (!seatView) return null;
+                    return (
+                      <div className="glass-panel-gold" style={{
+                        padding: "20px",
+                        borderRadius: "12px",
+                        marginBottom: "24px",
+                        background: "rgba(212, 175, 55, 0.03)",
+                        border: "1px solid rgba(212, 175, 55, 0.2)",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "10px",
+                        overflow: "hidden",
+                        position: "relative"
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <Armchair size={14} color="var(--accent-gold)" />
+                          <span style={{ fontSize: "0.75rem", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px", color: "var(--accent-gold)" }}>
+                            Virtual Stage View Simulator (Seat {lastSeat.id})
+                          </span>
+                        </div>
+
+                        <div style={{
+                          height: "90px",
+                          background: "#020205",
+                          borderRadius: "8px",
+                          border: "1px solid rgba(255,255,255,0.05)",
+                          display: "flex",
+                          flexDirection: "column",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          position: "relative",
+                          overflow: "hidden"
+                        }}>
+                          <div style={{
+                            width: "70px",
+                            height: "14px",
+                            background: "linear-gradient(to right, #d4af37, #a855f7)",
+                            borderRadius: "10px 10px 0 0",
+                            boxShadow: "0 0 15px rgba(212, 175, 55, 0.6)",
+                            marginBottom: "12px",
+                            transform: `scale(${seatView.proximity / 100})`,
+                            transition: "transform 0.4s"
+                          }} />
+
+                          <div style={{
+                            position: "absolute",
+                            bottom: "20px",
+                            width: "100%",
+                            height: "40px",
+                            background: "radial-gradient(ellipse at bottom, rgba(212, 175, 55, 0.15) 0%, transparent 70%)",
+                            pointerEvents: "none"
+                          }} />
+
+                          <span style={{ fontSize: "0.75rem", fontWeight: "600", color: "#fff" }}>
+                            {seatView.angle} Perspective
+                          </span>
+                          <span style={{ fontSize: "0.65rem", color: "var(--text-muted)", marginTop: "2px" }}>
+                            {seatView.viewQuality}
+                          </span>
+                        </div>
+
+                        <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", margin: 0, fontWeight: "300", lineHeight: "1.4" }}>
+                          {seatView.description} Enjoy a premium 3D sound distribution and curated seat catering service.
+                        </p>
+                      </div>
+                    );
+                  })()}
                   
                   <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "24px" }}>
                     {selectedSeats.map((seat) => (

@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { LogIn, LogOut, User, X, KeyRound, ShieldCheck } from "lucide-react";
+import { LogIn, LogOut, User, X, KeyRound, ShieldCheck, Sparkles } from "lucide-react";
 import { database } from "@/lib/database";
 
 export default function Navbar() {
@@ -18,6 +18,50 @@ export default function Navbar() {
   const [role, setRole] = useState("client"); // 'client' | 'organizer'
   const [error, setError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
+
+  // Collaborative lighting states
+  const [activeBooking, setActiveBooking] = useState(null);
+  const [lightingMode, setLightingMode] = useState("laser_sweep");
+  const [showLightingMenu, setShowLightingMenu] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      database.getBookings(user.email).then((bookings) => {
+        if (bookings && bookings.length > 0) {
+          setActiveBooking(bookings[0]);
+          const stored = localStorage.getItem(`luxe_lighting_${bookings[0].eventId}`);
+          if (stored) {
+            setLightingMode(stored);
+          }
+        } else {
+          setActiveBooking(null);
+        }
+      });
+    } else {
+      setActiveBooking(null);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (!activeBooking) return;
+    const channel = new BroadcastChannel(`luxe_lighting_${activeBooking.eventId}`);
+    channel.onmessage = (event) => {
+      if (event.data && event.data.type === "LIGHTING_CHANGE") {
+        setLightingMode(event.data.mode);
+      }
+    };
+    return () => channel.close();
+  }, [activeBooking]);
+
+  const changeLightingMode = (mode) => {
+    if (!activeBooking) return;
+    setLightingMode(mode);
+    localStorage.setItem(`luxe_lighting_${activeBooking.eventId}`, mode);
+    
+    const channel = new BroadcastChannel(`luxe_lighting_${activeBooking.eventId}`);
+    channel.postMessage({ type: "LIGHTING_CHANGE", mode });
+    channel.close();
+  };
 
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
@@ -165,6 +209,88 @@ export default function Navbar() {
                   </span>
                 </div>
               </Link>
+
+              {/* Collaborative Lighting Controller (Floating menu) */}
+              {activeBooking && (
+                <div style={{ position: "relative" }}>
+                  <button
+                    onClick={() => setShowLightingMenu(!showLightingMenu)}
+                    style={{
+                      background: "rgba(255, 255, 255, 0.02)",
+                      border: "1px solid rgba(255, 255, 255, 0.08)",
+                      borderRadius: "20px",
+                      padding: "6px 14px",
+                      fontSize: "0.85rem",
+                      color: "var(--text-secondary)",
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      transition: "all 0.2s"
+                    }}
+                    className="nav-link"
+                  >
+                    <Sparkles size={14} color={
+                      lightingMode === "laser_sweep" ? "#a855f7" :
+                      lightingMode === "golden_nebula" ? "#d4af37" :
+                      lightingMode === "neon_pulse" ? "#ec4899" : "#0d9488"
+                    } />
+                    <span>Atmosphere</span>
+                  </button>
+                  
+                  {showLightingMenu && (
+                    <div className="glass-panel" style={{
+                      position: "absolute",
+                      top: "36px",
+                      right: 0,
+                      width: "180px",
+                      padding: "10px",
+                      borderRadius: "12px",
+                      border: "1px solid rgba(255, 255, 255, 0.08)",
+                      background: "rgba(6, 8, 19, 0.95)",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "6px",
+                      zIndex: 200,
+                      boxShadow: "0 10px 30px rgba(0,0,0,0.5)"
+                    }}>
+                      <span style={{ fontSize: "0.65rem", textTransform: "uppercase", color: "var(--text-muted)", padding: "4px 8px", fontWeight: "700" }}>Set Lighting Mode</span>
+                      {[
+                        { id: "laser_sweep", label: "Laser Sweep", color: "#a855f7" },
+                        { id: "golden_nebula", label: "Golden Nebula", color: "#d4af37" },
+                        { id: "neon_pulse", label: "Neon Pulse", color: "#ec4899" },
+                        { id: "deep_ocean", label: "Deep Ocean", color: "#0d9488" }
+                      ].map((mode) => (
+                        <button
+                          key={mode.id}
+                          onClick={() => {
+                            changeLightingMode(mode.id);
+                            setShowLightingMenu(false);
+                          }}
+                          style={{
+                            background: lightingMode === mode.id ? "rgba(255, 255, 255, 0.05)" : "transparent",
+                            border: "none",
+                            borderRadius: "8px",
+                            padding: "6px 10px",
+                            color: lightingMode === mode.id ? "#fff" : "var(--text-secondary)",
+                            fontSize: "0.85rem",
+                            textAlign: "left",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "8px",
+                            transition: "all 0.2s"
+                          }}
+                          className="nav-link"
+                        >
+                          <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: mode.color }} />
+                          <span>{mode.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <Link href="/dashboard/settings" style={{
                 background: "transparent",
