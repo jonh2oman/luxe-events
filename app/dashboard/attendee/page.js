@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { 
   Ticket, Calendar, MapPin, Send, MessageSquare, Users, Sparkles, AlertCircle,
-  HelpCircle, ShieldCheck, CheckCircle2, ShoppingBag, Award, Star, Settings, Play, Video, RefreshCw
+  HelpCircle, ShieldCheck, CheckCircle2, ShoppingBag, Award, Star, Settings, Play, Video, RefreshCw, DollarSign
 } from "lucide-react";
 import { database } from "@/lib/database";
 import { useAuth } from "@/context/AuthContext";
@@ -58,6 +58,17 @@ export default function AttendeeDashboard() {
   const [swapSuccessMsg, setSwapSuccessMsg] = useState("");
   const [swapErrorMsg, setSwapErrorMsg] = useState("");
 
+  // Phase 10 Offline States
+  const [isOffline, setIsOffline] = useState(false);
+  const [simulateOffline, setSimulateOffline] = useState(false);
+  
+  // Phase 10 Resale listings
+  const [resaleListings, setResaleListings] = useState([]);
+  const [resalePriceInput, setResalePriceInput] = useState("");
+  const [resaleSuccessMsg, setResaleSuccessMsg] = useState("");
+  const [resaleErrorMsg, setResaleErrorMsg] = useState("");
+  const [showResaleControls, setShowResaleControls] = useState(false);
+
   // Soundcheck visualizer state
   const [isVisualizing, setIsVisualizing] = useState(false);
   const [visualizerBars, setVisualizerBars] = useState(Array.from({ length: 24 }, () => 15));
@@ -71,34 +82,95 @@ export default function AttendeeDashboard() {
   
   const chatEndRef = useRef(null);
 
+  // Monitor online/offline status
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsOffline(!navigator.onLine);
+      const handleOnline = () => setIsOffline(false);
+      const handleOffline = () => setIsOffline(true);
+      window.addEventListener("online", handleOnline);
+      window.addEventListener("offline", handleOffline);
+      return () => {
+        window.removeEventListener("online", handleOnline);
+        window.removeEventListener("offline", handleOffline);
+      };
+    }
+  }, []);
+
   const fetchBookingsAndSwaps = () => {
     if (user) {
-      database.getBookings(user.email).then(fetchedBookings => {
-        setBookings(fetchedBookings);
-        // Maintain selection or select first
-        if (fetchedBookings.length > 0) {
+      const offlineMode = isOffline || simulateOffline;
+      if (offlineMode) {
+        // Load bookings, swaps, events, and designs from cache
+        const cachedBookings = JSON.parse(localStorage.getItem(`luxe_offline_bookings_${user.email}`)) || [];
+        const cachedSwaps = JSON.parse(localStorage.getItem(`luxe_offline_swaps_${user.name}`)) || [];
+        const cachedEvents = JSON.parse(localStorage.getItem("luxe_offline_events")) || [];
+        const cachedDesigns = JSON.parse(localStorage.getItem("luxe_offline_designs")) || [];
+        const cachedResale = JSON.parse(localStorage.getItem("luxe_offline_resale")) || [];
+        
+        setBookings(cachedBookings);
+        setSwaps(cachedSwaps);
+        setResaleListings(cachedResale);
+        if (cachedEvents.length > 0) setEvents(cachedEvents);
+        if (cachedDesigns.length > 0) setDesigns(cachedDesigns);
+        
+        if (cachedBookings.length > 0) {
           if (!selectedBooking) {
-            setSelectedBooking(fetchedBookings[0]);
+            setSelectedBooking(cachedBookings[0]);
           } else {
-            const current = fetchedBookings.find(b => b.id === selectedBooking.id);
-            if (current) setSelectedBooking(current);
-            else setSelectedBooking(fetchedBookings[0]);
+            const current = cachedBookings.find(b => b.id === selectedBooking.id);
+            setSelectedBooking(current || cachedBookings[0]);
           }
         } else {
           setSelectedBooking(null);
         }
-      });
-      database.getP2PSwaps(user.name).then(setSwaps);
+      } else {
+        // Online fetch
+        database.getBookings(user.email).then(fetchedBookings => {
+          setBookings(fetchedBookings);
+          // Cache it
+          localStorage.setItem(`luxe_offline_bookings_${user.email}`, JSON.stringify(fetchedBookings));
+          
+          if (fetchedBookings.length > 0) {
+            if (!selectedBooking) {
+              setSelectedBooking(fetchedBookings[0]);
+            } else {
+              const current = fetchedBookings.find(b => b.id === selectedBooking.id);
+              setSelectedBooking(current || fetchedBookings[0]);
+            }
+          } else {
+            setSelectedBooking(null);
+          }
+        });
+        
+        database.getP2PSwaps(user.name).then(fetchedSwaps => {
+          setSwaps(fetchedSwaps);
+          localStorage.setItem(`luxe_offline_swaps_${user.name}`, JSON.stringify(fetchedSwaps));
+        });
+
+        database.getEvents().then(allEvents => {
+          setEvents(allEvents);
+          localStorage.setItem("luxe_offline_events", JSON.stringify(allEvents));
+        });
+
+        database.getTicketDesigns().then(allDesigns => {
+          setDesigns(allDesigns);
+          localStorage.setItem("luxe_offline_designs", JSON.stringify(allDesigns));
+        });
+
+        database.getResaleListings().then(listings => {
+          setResaleListings(listings);
+          localStorage.setItem("luxe_offline_resale", JSON.stringify(listings));
+        });
+      }
     }
   };
 
   useEffect(() => {
     if (user) {
       fetchBookingsAndSwaps();
-      database.getTicketDesigns().then(setDesigns);
-      database.getEvents().then(setEvents);
     }
-  }, [user]);
+  }, [user, isOffline, simulateOffline]);
 
   // Update chat and friends when selected ticket changes
   useEffect(() => {
@@ -106,9 +178,19 @@ export default function AttendeeDashboard() {
       // Reset seat selection for swaps
       setSwapSenderSeat(selectedBooking.seats[0] || "");
       
+      const offlineMode = isOffline || simulateOffline;
+      if (offlineMode) {
+        // Load cached messages
+        const cachedMsgs = JSON.parse(localStorage.getItem(`luxe_offline_msgs_${selectedBooking.eventId}`)) || [];
+        setMessages(cachedMsgs);
+        setAttendingFriends([]);
+        return;
+      }
+
       // Subscribe to real-time chat messages
       const unsubscribe = database.subscribeToMessages(selectedBooking.eventId, (msgs) => {
         setMessages(msgs);
+        localStorage.setItem(`luxe_offline_msgs_${selectedBooking.eventId}`, JSON.stringify(msgs));
       });
 
       const friends = database.getAttendingFriends(selectedBooking.eventId);
@@ -116,7 +198,7 @@ export default function AttendeeDashboard() {
 
       return () => unsubscribe();
     }
-  }, [selectedBooking]);
+  }, [selectedBooking, isOffline, simulateOffline]);
 
   // Scroll to bottom of chat
   useEffect(() => {
@@ -287,6 +369,205 @@ export default function AttendeeDashboard() {
       setOrderSuccess(true);
       setOrderItems(prev => prev.map(item => ({ ...item, count: 0 })));
       setTimeout(() => setOrderSuccess(false), 4000);
+    }
+  };
+
+  const handlePrintTicket = () => {
+    if (!selectedBooking) return;
+    const printWindow = window.open("", "_blank", "width=800,height=600");
+    const activeDesign = designs.find(d => d.id === (events.find(e => e.id === selectedBooking.eventId)?.ticketDesignId)) || {
+      material: "gold_foil",
+      borderStyle: "gold_glow",
+      stamp: "star",
+      fontFamily: "serif"
+    };
+
+    const fontStyle = activeDesign.fontFamily === "serif" ? "Georgia, serif" : activeDesign.fontFamily === "mono" ? "Courier New, monospace" : "Arial, sans-serif";
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>Luxe Events Ticket - ${selectedBooking.eventTitle}</title>
+          <style>
+            body {
+              background: #fff;
+              color: #000;
+              font-family: ${fontStyle};
+              margin: 0;
+              padding: 40px;
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              min-height: 100vh;
+            }
+            .ticket-container {
+              width: 100%;
+              max-width: 480px;
+              border: 3px double #d4af37;
+              padding: 30px;
+              border-radius: 12px;
+              box-shadow: 0 0 10px rgba(0,0,0,0.1);
+              background: #fafafa;
+              position: relative;
+            }
+            .header {
+              border-bottom: 1px dashed #ccc;
+              padding-bottom: 20px;
+              margin-bottom: 20px;
+              text-align: center;
+            }
+            .header h1 {
+              font-size: 24px;
+              margin: 0;
+              color: #b89218;
+            }
+            .header p {
+              margin: 5px 0 0 0;
+              font-size: 12px;
+              text-transform: uppercase;
+              letter-spacing: 2px;
+              color: #555;
+            }
+            .title {
+              font-size: 22px;
+              font-weight: 700;
+              margin: 10px 0;
+            }
+            .detail-grid {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 15px;
+              margin: 20px 0;
+              font-size: 14px;
+            }
+            .detail-item {
+              margin-bottom: 10px;
+            }
+            .label {
+              font-size: 10px;
+              text-transform: uppercase;
+              color: #666;
+              letter-spacing: 1px;
+            }
+            .value {
+              font-weight: 600;
+              margin-top: 2px;
+            }
+            .footer {
+              border-top: 1px dashed #ccc;
+              padding-top: 20px;
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+            }
+            .barcode-placeholder {
+              font-size: 10px;
+              color: #666;
+            }
+            .stamp {
+              position: absolute;
+              top: 25px;
+              right: 25px;
+              font-size: 24px;
+              color: rgba(212,175,55,0.4);
+              font-weight: 800;
+              border: 3px solid rgba(212,175,55,0.4);
+              padding: 5px 10px;
+              border-radius: 5px;
+              transform: rotate(-15deg);
+              text-transform: uppercase;
+            }
+            @media print {
+              body { padding: 0; }
+              .ticket-container { box-shadow: none; border-color: #000; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="ticket-container">
+            <div class="stamp">${activeDesign.stamp === 'star' ? '★ STAR' : activeDesign.stamp === 'crest' ? '♛ CREST' : 'LUXE'}</div>
+            <div class="header">
+              <p>OFFICIAL DIGITAL PASS</p>
+              <h1>LUXE CONCERT EXPERIENCE</h1>
+            </div>
+            
+            <div class="title">${selectedBooking.eventTitle}</div>
+            <div style="font-size: 13px; color: #555; margin-bottom: 15px;">${selectedBooking.eventLocation}</div>
+            
+            <div class="detail-grid">
+              <div class="detail-item">
+                <div class="label">Date & Time</div>
+                <div class="value">${selectedBooking.eventDate}</div>
+              </div>
+              <div class="detail-item">
+                <div class="label">Seats Secured</div>
+                <div class="value" style="color: #b89218;">${selectedBooking.seats.join(", ")}</div>
+              </div>
+              <div class="detail-item">
+                <div class="label">Gate Entry</div>
+                <div class="value">North Gate Access</div>
+              </div>
+              <div class="detail-item">
+                <div class="label">Booking Reference</div>
+                <div class="value" style="font-family: monospace;">${selectedBooking.id}</div>
+              </div>
+            </div>
+            
+            <div class="footer">
+              <div class="barcode-placeholder">
+                SECURE QR GATEWAY VERIFIED
+              </div>
+              <div style="font-size: 24px; font-weight: bold; letter-spacing: 1px;">
+                ||| | || || | |||
+              </div>
+            </div>
+          </div>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            }
+          </script>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+  };
+
+  const handleListResale = async () => {
+    if (!selectedBooking) return;
+    const price = parseInt(resalePriceInput);
+    if (isNaN(price) || price <= 0) {
+      setResaleErrorMsg("Please enter a valid price.");
+      return;
+    }
+    if (price > selectedBooking.price) {
+      setResaleErrorMsg(`Resale price cannot exceed the original face value: ${database.formatPrice(selectedBooking.price, user?.currency)}`);
+      return;
+    }
+
+    const listing = await database.listTicketForResale(selectedBooking.id, price);
+    if (listing) {
+      setResaleSuccessMsg("Ticket successfully listed on the Fan Resale Exchange!");
+      setResaleErrorMsg("");
+      setShowResaleControls(false);
+      fetchBookingsAndSwaps();
+      setTimeout(() => setResaleSuccessMsg(""), 4000);
+    } else {
+      setResaleErrorMsg("Failed to list ticket for resale.");
+    }
+  };
+
+  const handleDelistResale = async () => {
+    if (!selectedBooking) return;
+    const success = await database.delistTicketForResale(selectedBooking.id);
+    if (success) {
+      setResaleSuccessMsg("Ticket delisted from the Fan Resale Exchange.");
+      setResaleErrorMsg("");
+      fetchBookingsAndSwaps();
+      setTimeout(() => setResaleSuccessMsg(""), 4000);
+    } else {
+      setResaleErrorMsg("Failed to delist ticket.");
     }
   };
 
@@ -557,7 +838,66 @@ export default function AttendeeDashboard() {
 
   return (
     <main style={{ padding: "0 24px", maxWidth: "1250px", margin: "0 auto", marginTop: "40px" }}>
-      <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "2.4rem", marginBottom: "32px" }}>Attendee Dashboard</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "32px" }}>
+        <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "2.4rem", margin: 0 }}>Attendee Dashboard</h1>
+        
+        {/* Outage simulator switch */}
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", background: "rgba(255,255,255,0.02)", padding: "6px 14px", borderRadius: "12px", border: "1px solid rgba(255,255,255,0.05)" }}>
+          <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: "500" }}>Simulate Gate Outage</span>
+          <button 
+            onClick={() => setSimulateOffline(!simulateOffline)}
+            style={{
+              background: simulateOffline ? "#d97706" : "rgba(255,255,255,0.08)",
+              border: "1px solid " + (simulateOffline ? "#d97706" : "rgba(255,255,255,0.15)"),
+              color: simulateOffline ? "#000" : "var(--text-secondary)",
+              padding: "4px 8px",
+              borderRadius: "6px",
+              fontSize: "0.7rem",
+              fontWeight: "700",
+              cursor: "pointer",
+              transition: "all 0.2s"
+            }}
+          >
+            {simulateOffline ? "DISCONNECTED" : "ONLINE"}
+          </button>
+        </div>
+      </div>
+
+      {/* Zero-Signal Wallet Guard Banner */}
+      {(isOffline || simulateOffline) && (
+        <div className="glass-panel-gold pulse-border" style={{
+          padding: "16px 24px",
+          borderRadius: "16px",
+          marginBottom: "32px",
+          background: "linear-gradient(135deg, rgba(217, 119, 6, 0.15) 0%, rgba(6, 8, 19, 0.95) 100%)",
+          border: "1px solid #d97706",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "16px",
+          boxShadow: "0 0 15px rgba(217, 119, 6, 0.2)"
+        }}>
+          <div>
+            <h4 style={{ color: "#d97706", fontWeight: "600", fontSize: "1.05rem", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+              🛡️ Zero-Signal Wallet Guard Active
+            </h4>
+            <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", margin: "4px 0 0 0", lineHeight: "1.4" }}>
+              Offline mode is active. Your tickets are loaded directly from the secure local client-side cache. Gate entries are fully operational.
+            </p>
+          </div>
+          <span style={{
+            fontSize: "0.75rem",
+            background: "rgba(217, 119, 6, 0.1)",
+            color: "#d97706",
+            border: "1px solid rgba(217, 119, 6, 0.3)",
+            padding: "4px 10px",
+            borderRadius: "100px",
+            fontWeight: "600"
+          }}>
+            Secure Offline Cache
+          </span>
+        </div>
+      )}
 
       {bookings.length === 0 ? (
         <div className="glass-panel" style={{
@@ -824,6 +1164,85 @@ export default function AttendeeDashboard() {
                       </div>
                     </div>
                   </div>
+                  
+                  {/* Phase 10 Ticket Action Deck */}
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px", maxWidth: "360px", margin: "0 auto", width: "100%" }}>
+                    <div style={{ display: "flex", gap: "10px" }}>
+                      <button 
+                        onClick={handlePrintTicket}
+                        className="btn-primary" 
+                        style={{ flex: 1, padding: "10px 14px", fontSize: "0.85rem", fontWeight: "600", borderRadius: "12px", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", justifyContent: "center" }}
+                      >
+                        🖨️ Print Pass
+                      </button>
+
+                      {selectedBooking.status !== "resold" && (
+                        <button 
+                          onClick={() => {
+                            if (selectedBooking.resaleListed) {
+                              handleDelistResale();
+                            } else {
+                              setResalePriceInput(selectedBooking.price || 40);
+                              setResaleSuccessMsg("");
+                              setResaleErrorMsg("");
+                              setShowResaleControls(!showResaleControls);
+                            }
+                          }}
+                          style={{
+                            flex: 1,
+                            background: selectedBooking.resaleListed ? "rgba(239, 68, 68, 0.1)" : "rgba(212, 175, 55, 0.05)",
+                            border: "1px solid " + (selectedBooking.resaleListed ? "#ef4444" : "rgba(212, 175, 55, 0.3)"),
+                            color: selectedBooking.resaleListed ? "#ef4444" : "var(--accent-gold)",
+                            padding: "10px 14px",
+                            borderRadius: "12px",
+                            fontSize: "0.85rem",
+                            fontWeight: "600",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "6px",
+                            justifyContent: "center"
+                          }}
+                        >
+                          {selectedBooking.resaleListed ? "❌ Delist Resale" : "💰 Sell Ticket"}
+                        </button>
+                      )}
+                    </div>
+
+                    {showResaleControls && (
+                      <div className="glass-panel" style={{ padding: "16px", borderRadius: "16px", marginTop: "8px", border: "1px solid rgba(212, 175, 55, 0.2)" }}>
+                        <h4 style={{ fontSize: "0.85rem", fontWeight: "600", marginBottom: "4px", color: "var(--accent-gold)" }}>Face-Value Resale Listing</h4>
+                        <p style={{ fontSize: "0.7rem", color: "var(--text-muted)", marginBottom: "12px" }}>
+                          Specify listing price. Maximum allowed: face value ({database.formatPrice(selectedBooking.price, user?.currency)}).
+                        </p>
+                        
+                        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                          <input 
+                            type="number" 
+                            max={selectedBooking.price}
+                            value={resalePriceInput}
+                            onChange={(e) => setResalePriceInput(e.target.value)}
+                            className="glass-input" 
+                            style={{ padding: "8px", fontSize: "0.85rem", width: "100px" }}
+                          />
+                          <button 
+                            onClick={handleListResale}
+                            className="btn-primary" 
+                            style={{ padding: "8px 16px", fontSize: "0.8rem" }}
+                          >
+                            Confirm List
+                          </button>
+                        </div>
+                        {resaleErrorMsg && <p style={{ color: "#ef4444", fontSize: "0.75rem", marginTop: "6px", margin: 0 }}>{resaleErrorMsg}</p>}
+                      </div>
+                    )}
+
+                    {resaleSuccessMsg && (
+                      <p style={{ color: "#10b981", fontSize: "0.8rem", textAlign: "center", marginTop: "4px", margin: 0 }}>
+                        {resaleSuccessMsg}
+                      </p>
+                    )}
+                  </div>
                 </div>
               );
             })()}
@@ -837,7 +1256,7 @@ export default function AttendeeDashboard() {
                 {/* Tabs bar */}
                 <div style={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 1fr 1fr 1fr",
+                  gridTemplateColumns: "repeat(3, 1fr)",
                   gap: "6px",
                   background: "rgba(255, 255, 255, 0.02)",
                   padding: "6px",
@@ -850,20 +1269,21 @@ export default function AttendeeDashboard() {
                       background: activeTabSub === "chat" ? "linear-gradient(135deg, var(--accent-gold) 0%, #aa8010 100%)" : "transparent",
                       color: activeTabSub === "chat" ? "#060813" : "var(--text-secondary)",
                       border: "none",
-                      padding: "10px 6px",
+                      padding: "10px 4px",
                       borderRadius: "12px",
-                      fontSize: "0.8rem",
+                      fontSize: "0.75rem",
                       fontWeight: "600",
                       cursor: "pointer",
                       display: "flex",
+                      flexDirection: "column",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "6px",
+                      gap: "4px",
                       transition: "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)"
                     }}
                   >
                     <MessageSquare size={14} />
-                    <span>Lounge Chat</span>
+                    <span style={{ fontSize: "0.68rem" }}>Lounge Chat</span>
                   </button>
                   <button
                     onClick={() => setActiveTabSub("service")}
@@ -871,20 +1291,21 @@ export default function AttendeeDashboard() {
                       background: activeTabSub === "service" ? "linear-gradient(135deg, var(--accent-gold) 0%, #aa8010 100%)" : "transparent",
                       color: activeTabSub === "service" ? "#060813" : "var(--text-secondary)",
                       border: "none",
-                      padding: "10px 6px",
+                      padding: "10px 4px",
                       borderRadius: "12px",
-                      fontSize: "0.8rem",
+                      fontSize: "0.75rem",
                       fontWeight: "600",
                       cursor: "pointer",
                       display: "flex",
+                      flexDirection: "column",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "6px",
+                      gap: "4px",
                       transition: "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)"
                     }}
                   >
                     <ShoppingBag size={14} />
-                    <span>Seat Service</span>
+                    <span style={{ fontSize: "0.68rem" }}>Seat Service</span>
                   </button>
                   <button
                     onClick={() => setActiveTabSub("swap")}
@@ -892,20 +1313,21 @@ export default function AttendeeDashboard() {
                       background: activeTabSub === "swap" ? "linear-gradient(135deg, var(--accent-gold) 0%, #aa8010 100%)" : "transparent",
                       color: activeTabSub === "swap" ? "#060813" : "var(--text-secondary)",
                       border: "none",
-                      padding: "10px 6px",
+                      padding: "10px 4px",
                       borderRadius: "12px",
-                      fontSize: "0.8rem",
+                      fontSize: "0.75rem",
                       fontWeight: "600",
                       cursor: "pointer",
                       display: "flex",
+                      flexDirection: "column",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "6px",
+                      gap: "4px",
                       transition: "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)"
                     }}
                   >
                     <RefreshCw size={14} />
-                    <span>Seat Swaps</span>
+                    <span style={{ fontSize: "0.68rem" }}>Seat Swaps</span>
                   </button>
                   <button
                     onClick={() => setActiveTabSub("stream")}
@@ -913,20 +1335,65 @@ export default function AttendeeDashboard() {
                       background: activeTabSub === "stream" ? "linear-gradient(135deg, var(--accent-gold) 0%, #aa8010 100%)" : "transparent",
                       color: activeTabSub === "stream" ? "#060813" : "var(--text-secondary)",
                       border: "none",
-                      padding: "10px 6px",
+                      padding: "10px 4px",
                       borderRadius: "12px",
-                      fontSize: "0.8rem",
+                      fontSize: "0.75rem",
                       fontWeight: "600",
                       cursor: "pointer",
                       display: "flex",
+                      flexDirection: "column",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: "6px",
+                      gap: "4px",
                       transition: "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)"
                     }}
                   >
                     <Video size={14} />
-                    <span>Soundcheck</span>
+                    <span style={{ fontSize: "0.68rem" }}>Soundcheck</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTabSub("exchange")}
+                    style={{
+                      background: activeTabSub === "exchange" ? "linear-gradient(135deg, var(--accent-gold) 0%, #aa8010 100%)" : "transparent",
+                      color: activeTabSub === "exchange" ? "#060813" : "var(--text-secondary)",
+                      border: "none",
+                      padding: "10px 4px",
+                      borderRadius: "12px",
+                      fontSize: "0.75rem",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "4px",
+                      transition: "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)"
+                    }}
+                  >
+                    <DollarSign size={14} />
+                    <span style={{ fontSize: "0.68rem" }}>Resale Hub</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTabSub("venue")}
+                    style={{
+                      background: activeTabSub === "venue" ? "linear-gradient(135deg, var(--accent-gold) 0%, #aa8010 100%)" : "transparent",
+                      color: activeTabSub === "venue" ? "#060813" : "var(--text-secondary)",
+                      border: "none",
+                      padding: "10px 4px",
+                      borderRadius: "12px",
+                      fontSize: "0.75rem",
+                      fontWeight: "600",
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "4px",
+                      transition: "all 0.3s cubic-bezier(0.25, 1, 0.5, 1)"
+                    }}
+                  >
+                    <MapPin size={14} />
+                    <span style={{ fontSize: "0.68rem" }}>Venue Guide</span>
                   </button>
                 </div>
 
@@ -1486,6 +1953,191 @@ export default function AttendeeDashboard() {
                           Disconnect Livestream Feed
                         </button>
                       )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tab Content 5: P2P Resale Hub */}
+                {activeTabSub === "exchange" && (
+                  <div className="glass-panel" style={{ padding: "32px", borderRadius: "20px", background: "var(--glass-bg)", border: "1px solid var(--glass-border)", minHeight: "500px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <DollarSign size={20} color="var(--accent-gold)" />
+                        <div>
+                          <h3 style={{ fontSize: "1.1rem", fontWeight: "600" }}>Fan Resale Exchange</h3>
+                          <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Secure face-value ticket exchange with 0% resale fees</p>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: "0.7rem", color: "var(--accent-gold)", background: "rgba(212,175,55,0.1)", border: "1px solid var(--accent-gold)", padding: "4px 8px", borderRadius: "6px", fontWeight: "700" }}>
+                        100% FACE VALUE CAPPED
+                      </span>
+                    </div>
+
+                    {(isOffline || simulateOffline) ? (
+                      <div style={{ textAlign: "center", padding: "40px" }}>
+                        <AlertCircle size={32} color="#d97706" style={{ marginBottom: "12px" }} />
+                        <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>Marketplace features are disabled in offline mode.</p>
+                      </div>
+                    ) : resaleListings.length === 0 ? (
+                      <div style={{ textAlign: "center", padding: "60px 20px", border: "1px dashed rgba(255,255,255,0.06)", borderRadius: "16px" }}>
+                        <Ticket size={32} color="var(--text-muted)" style={{ marginBottom: "12px", opacity: 0.5 }} />
+                        <h4 style={{ fontSize: "0.95rem", fontWeight: "600", color: "var(--text-secondary)", marginBottom: "4px" }}>No tickets listed currently</h4>
+                        <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", margin: 0 }}>All listed campaigns are fully booked. Check back later for fan resales.</p>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                        {resaleListings.map((listing) => {
+                          const isOwnListing = listing.sellerName.toLowerCase() === user.name.toLowerCase();
+                          return (
+                            <div 
+                              key={listing.id}
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                                padding: "16px",
+                                borderRadius: "12px",
+                                background: "rgba(255,255,255,0.01)",
+                                border: "1px solid rgba(255,255,255,0.04)"
+                              }}
+                            >
+                              <div>
+                                <span style={{ fontWeight: "600", fontSize: "0.9rem", display: "block" }}>{listing.eventTitle}</span>
+                                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{listing.eventDate} • Seats: {listing.seats.join(", ")}</span>
+                                <span style={{ fontSize: "0.7rem", color: "var(--text-muted)", display: "block", marginTop: "4px" }}>Seller: {isOwnListing ? "You" : listing.sellerName}</span>
+                              </div>
+                              <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                                <span style={{ fontWeight: "750", color: "var(--accent-gold)", fontSize: "1rem" }}>
+                                  {database.formatPrice(listing.price, user?.currency)}
+                                </span>
+                                {isOwnListing ? (
+                                  <button
+                                    onClick={() => handleDelistResale()}
+                                    style={{
+                                      background: "rgba(239, 68, 68, 0.1)",
+                                      border: "1px solid #ef4444",
+                                      color: "#ef4444",
+                                      padding: "6px 12px",
+                                      borderRadius: "8px",
+                                      fontSize: "0.75rem",
+                                      fontWeight: "600",
+                                      cursor: "pointer"
+                                    }}
+                                  >
+                                    Delist
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={async () => {
+                                      if (confirm(`Purchase resale ticket for ${database.formatPrice(listing.price, user?.currency)}?`)) {
+                                        const result = await database.buyResaleListing(listing.id, user.name, user.email);
+                                        if (result) {
+                                          alert("Ticket purchased successfully! Fresh pass has been added to your wallet.");
+                                          fetchBookingsAndSwaps();
+                                        } else {
+                                          alert("Resale purchase failed.");
+                                        }
+                                      }
+                                    }}
+                                    className="btn-primary"
+                                    style={{
+                                      padding: "6px 12px",
+                                      fontSize: "0.75rem",
+                                      fontWeight: "600",
+                                      borderRadius: "8px"
+                                    }}
+                                  >
+                                    Secure Buy
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Tab Content 6: Venue companion survival guide */}
+                {activeTabSub === "venue" && (
+                  <div className="glass-panel" style={{ padding: "32px", borderRadius: "20px", background: "var(--glass-bg)", border: "1px solid var(--glass-border)", minHeight: "500px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "24px" }}>
+                      <MapPin size={20} color="var(--accent-gold)" />
+                      <div>
+                        <h3 style={{ fontSize: "1.1rem", fontWeight: "600" }}>Venue Guide & Logistics</h3>
+                        <p style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Survival companion for {selectedBooking.eventTitle}</p>
+                      </div>
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+                      {/* Event schedule timeline */}
+                      <div>
+                        <span style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--accent-gold)", fontWeight: "700", display: "block", marginBottom: "12px", letterSpacing: "1px" }}>Set Times Timeline</span>
+                        <div style={{ background: "rgba(0,0,0,0.15)", padding: "16px", borderRadius: "12px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem" }}>
+                            <span style={{ color: "var(--text-secondary)" }}>18:00</span>
+                            <span style={{ fontWeight: "600" }}>Doors Open & VIP Lounge Access</span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem" }}>
+                            <span style={{ color: "var(--text-secondary)" }}>19:15</span>
+                            <span style={{ fontWeight: "600" }}>Support Artist Act</span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem" }}>
+                            <span style={{ color: "var(--text-secondary)" }}>20:30</span>
+                            <span style={{ color: "var(--accent-gold)", fontWeight: "700" }}>Headliner Act performance</span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem" }}>
+                            <span style={{ color: "var(--text-secondary)" }}>23:00</span>
+                            <span style={{ color: "#ef4444", fontWeight: "600" }}>Curfew & Final Bar Calls</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Venue Guidelines */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                        <div style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.04)", padding: "14px", borderRadius: "12px" }}>
+                          <span style={{ fontSize: "0.7rem", color: "var(--text-secondary)", textTransform: "uppercase", display: "block", marginBottom: "4px" }}>🎒 Bag Policy</span>
+                          <span style={{ fontSize: "0.8rem", fontWeight: "500" }}>Clear bags only. Maximum size 12" x 6" x 12".</span>
+                        </div>
+                        <div style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.04)", padding: "14px", borderRadius: "12px" }}>
+                          <span style={{ fontSize: "0.7rem", color: "var(--text-secondary)", textTransform: "uppercase", display: "block", marginBottom: "4px" }}>📷 Camera Policy</span>
+                          <span style={{ fontSize: "0.8rem", fontWeight: "500" }}>No professional cameras. Phones allowed.</span>
+                        </div>
+                      </div>
+
+                      {/* Transit & Uber Dropoff */}
+                      <div style={{ background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.04)", padding: "16px", borderRadius: "12px" }}>
+                        <span style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--accent-gold)", fontWeight: "700", display: "block", marginBottom: "8px", letterSpacing: "1px" }}>Transit & Directions</span>
+                        <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", margin: "0 0 8px 0", lineHeight: "1.4" }}>
+                          Uber/Lyft drop-off point is located at the **North Portal Gate 2**. VIP Parking is reserved at parking lot C (show this digital ticket for entry).
+                        </p>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Subway: J, M, Z lines to Center Station.</span>
+                      </div>
+
+                      {/* Drink Bar Menu preview */}
+                      <div>
+                        <span style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--accent-gold)", fontWeight: "700", display: "block", marginBottom: "12px", letterSpacing: "1px" }}>Bar Lounge Section Menu</span>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", fontSize: "0.8rem" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", background: "rgba(0,0,0,0.1)", padding: "8px 12px", borderRadius: "8px" }}>
+                            <span>Luxe Martini</span>
+                            <span style={{ color: "var(--accent-gold)" }}>$18</span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", background: "rgba(0,0,0,0.1)", padding: "8px 12px", borderRadius: "8px" }}>
+                            <span>Craft IPA</span>
+                            <span style={{ color: "var(--accent-gold)" }}>$9</span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", background: "rgba(0,0,0,0.1)", padding: "8px 12px", borderRadius: "8px" }}>
+                            <span>Grand Cru Flute</span>
+                            <span style={{ color: "var(--accent-gold)" }}>$28</span>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", background: "rgba(0,0,0,0.1)", padding: "8px 12px", borderRadius: "8px" }}>
+                            <span>Truffle Fries</span>
+                            <span style={{ color: "var(--accent-gold)" }}>$14</span>
+                          </div>
+                        </div>
+                      </div>
+
                     </div>
                   </div>
                 )}

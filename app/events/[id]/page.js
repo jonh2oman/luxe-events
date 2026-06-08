@@ -79,6 +79,123 @@ function EventDetail() {
     };
   };
 
+  const playAcousticSample = (seatId) => {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const filter = ctx.createBiquadFilter();
+      const gainNode = ctx.createGain();
+      const delay = ctx.createDelay();
+      const panner = ctx.createStereoPanner ? ctx.createStereoPanner() : null;
+
+      const row = seatId.charAt(0);
+      const col = parseInt(seatId.substring(1), 10) || 5;
+
+      let volume = 0.15;
+      let delayTime = 0.05;
+      let filterFreq = 1200;
+      let pan = 0.0;
+
+      if (col <= 3) {
+        pan = -0.7;
+      } else if (col >= 8) {
+        pan = 0.7;
+      } else {
+        pan = (col - 5) * 0.15;
+      }
+
+      if ("ABC".includes(row)) {
+        volume = 0.22;
+        delayTime = 0.015;
+        filterFreq = 800;
+        filter.type = "lowshelf";
+        filter.gain.value = 12;
+      } else if ("DEF".includes(row)) {
+        volume = 0.14;
+        delayTime = 0.08;
+        filterFreq = 1400;
+        filter.type = "peaking";
+        filter.Q.value = 1.0;
+        filter.gain.value = 2;
+      } else {
+        volume = 0.08;
+        delayTime = 0.22;
+        filterFreq = 900;
+        filter.type = "lowpass";
+      }
+
+      const now = ctx.currentTime;
+      osc1.type = "sawtooth";
+      osc1.frequency.setValueAtTime(220, now);
+      osc1.frequency.exponentialRampToValueAtTime(440, now + 1.2);
+
+      osc2.type = "triangle";
+      osc2.frequency.setValueAtTime(277.18, now);
+      osc2.frequency.exponentialRampToValueAtTime(554.37, now + 1.2);
+
+      gainNode.gain.setValueAtTime(0, now);
+      gainNode.gain.linearRampToValueAtTime(volume, now + 0.1);
+      gainNode.gain.exponentialRampToValueAtTime(0.0001, now + 1.5);
+
+      delay.delayTime.setValueAtTime(delayTime, now);
+
+      osc1.connect(filter);
+      osc2.connect(filter);
+      filter.connect(gainNode);
+
+      const feedback = ctx.createGain();
+      feedback.gain.setValueAtTime(row >= 'G' ? 0.45 : 0.15, now);
+      
+      gainNode.connect(delay);
+      delay.connect(feedback);
+      feedback.connect(delay);
+      
+      if (panner) {
+        panner.pan.setValueAtTime(pan, now);
+        gainNode.connect(panner);
+        delay.connect(panner);
+        panner.connect(ctx.destination);
+      } else {
+        gainNode.connect(ctx.destination);
+        delay.connect(ctx.destination);
+      }
+
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 1.6);
+      osc2.stop(now + 1.6);
+
+      const toast = document.createElement("div");
+      toast.style.cssText = `
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        background: rgba(212, 175, 55, 0.95);
+        color: #060813;
+        padding: 12px 24px;
+        border-radius: 10px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        z-index: 10000;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        border: 1px solid rgba(255,255,255,0.2);
+        transition: opacity 0.3s ease-out;
+      `;
+      toast.innerText = `🎧 Acoustic Profile Audited: Panning ${pan > 0 ? "Right" : pan < 0 ? "Left" : "Center"} | Echo ${Math.floor(delayTime * 1000)}ms`;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = "0";
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    } catch (e) {
+      console.error("Web Audio failed", e);
+    }
+  };
+
   const handleApplyPromo = async () => {
     setPromoError("");
     setPromoSuccess("");
@@ -821,6 +938,29 @@ function EventDetail() {
                         <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", margin: 0, fontWeight: "300", lineHeight: "1.4" }}>
                           {seatView.description} Enjoy a premium 3D sound distribution and curated seat catering service.
                         </p>
+
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "12px" }}>
+                          <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Acoustics profile:</span>
+                          <button
+                            onClick={() => playAcousticSample(lastSeat.id)}
+                            style={{
+                              background: "rgba(212, 175, 55, 0.1)",
+                              border: "1px solid rgba(212, 175, 55, 0.3)",
+                              color: "var(--accent-gold)",
+                              borderRadius: "6px",
+                              padding: "4px 10px",
+                              fontSize: "0.75rem",
+                              fontWeight: "600",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
+                              transition: "all 0.2s"
+                            }}
+                          >
+                            🔊 Audition Acoustics
+                          </button>
+                        </div>
                       </div>
                     );
                   })()}
