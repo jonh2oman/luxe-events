@@ -5,8 +5,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { Search, Calendar, MapPin, Tag, ArrowRight, Sparkles, Compass, ShieldCheck } from "lucide-react";
 import { database } from "@/lib/database";
+import { useAuth } from "@/context/AuthContext";
 
 export default function Home() {
+  const { user } = useAuth();
   const [events, setEvents] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -318,7 +320,7 @@ export default function Home() {
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div>
                         <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block" }}>Tickets from</span>
-                        <span style={{ fontSize: "1.4rem", fontWeight: "700", color: "var(--text-primary)" }}>${event.price}</span>
+                        <span style={{ fontSize: "1.4rem", fontWeight: "700", color: "var(--text-primary)" }}>{database.formatPrice(event.price, user?.currency)}</span>
                       </div>
                       <Link href={`/events/${event.id}`}>
                         <button className="btn-secondary" style={{ padding: "8px 18px", borderRadius: "18px", fontSize: "0.85rem" }}>

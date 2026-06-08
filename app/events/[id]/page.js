@@ -50,7 +50,7 @@ function EventDetail() {
     const promo = await database.validatePromoCode(promoCodeInput);
     if (promo) {
       setAppliedPromo(promo);
-      setPromoSuccess(`Code ${promo.code} applied! Discount: ${promo.type === 'percent' ? promo.discount + '%' : '$' + promo.discount}`);
+      setPromoSuccess(`Code ${promo.code} applied! Discount: ${promo.type === 'percent' ? promo.discount + '%' : database.formatPrice(promo.discount, user?.currency)}`);
     } else {
       setAppliedPromo(null);
       setPromoError("Invalid promotional code.");
@@ -389,7 +389,7 @@ function EventDetail() {
                     <span style={{ fontWeight: "600", fontSize: "0.95rem", display: "block" }}>{tier.name}</span>
                     <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "300" }}>{tier.description}</span>
                   </div>
-                  <span style={{ fontSize: "1.2rem", fontWeight: "700", color: "var(--accent-gold)" }}>${tier.price}</span>
+                  <span style={{ fontSize: "1.2rem", fontWeight: "700", color: "var(--accent-gold)" }}>{database.formatPrice(tier.price, user?.currency)}</span>
                 </div>
               ))}
             </div>
@@ -491,7 +491,7 @@ function EventDetail() {
                 }
 
                 // Title tooltip
-                let seatTitle = `${seat.id} (${seat.tier}) - $${seat.price}`;
+                let seatTitle = `${seat.id} (${seat.tier}) - ${database.formatPrice(seat.price, user?.currency)}`;
                 if (isFriendSelecting) {
                   const selectNames = occupants.filter(([_, s]) => s.action === "select").map(([u]) => u).join(", ");
                   seatTitle += ` (Held by ${selectNames})`;
@@ -637,7 +637,7 @@ function EventDetail() {
                           <span>Seat {seat.id}</span>
                           <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>({seat.tier})</span>
                         </div>
-                        <span style={{ fontWeight: "600" }}>${seat.price}</span>
+                        <span style={{ fontWeight: "600" }}>{database.formatPrice(seat.price, user?.currency)}</span>
                       </div>
                     ))}
                   </div>
@@ -663,7 +663,7 @@ function EventDetail() {
                       <label htmlFor="splitPay" style={{ fontSize: "0.85rem", cursor: "pointer", display: "flex", flexDirection: "column" }}>
                         <span style={{ fontWeight: "600", color: "var(--accent-gold)" }}>Split payment with friends</span>
                         <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
-                          Each pay: ${(totalPrice / selectedSeats.length).toFixed(2)}
+                          Each pay: {database.formatPrice(totalPrice / selectedSeats.length, user?.currency)}
                         </span>
                       </label>
                     </div>
@@ -711,11 +711,11 @@ function EventDetail() {
                     <div>
                       {appliedPromo && (
                         <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", textDecoration: "line-through" }}>
-                          Original: ${basePrice}
+                          Original: {database.formatPrice(basePrice, user?.currency)}
                         </span>
                       )}
                       <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block" }}>Total Amount</span>
-                      <span style={{ fontSize: "1.5rem", fontWeight: "700", color: "var(--text-primary)" }}>${totalPrice}</span>
+                      <span style={{ fontSize: "1.5rem", fontWeight: "700", color: "var(--text-primary)" }}>{database.formatPrice(totalPrice, user?.currency)}</span>
                     </div>
                     
                     <button 

@@ -9,8 +9,10 @@ import {
   ArrowRight, ShieldCheck, ArrowUpRight 
 } from "lucide-react";
 import { database } from "@/lib/database";
+import { useAuth } from "@/context/AuthContext";
 
 export default function OrganizerDashboard() {
+  const { user } = useAuth();
   const [analytics, setAnalytics] = useState(null);
   const [events, setEvents] = useState([]);
   const [layoutTemplates, setLayoutTemplates] = useState([]);
@@ -239,7 +241,66 @@ export default function OrganizerDashboard() {
 
   return (
     <main style={{ padding: "0 24px", maxWidth: "1250px", margin: "0 auto", marginTop: "40px" }}>
-      <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "2.4rem", marginBottom: "32px" }}>Organizer Dashboard</h1>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "32px", flexWrap: "wrap", gap: "16px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          {user?.logo ? (
+            <img 
+              src={user.logo} 
+              alt="Organization Logo" 
+              style={{ width: "50px", height: "50px", borderRadius: "50%", border: "2px solid var(--accent-gold)", objectFit: "cover" }} 
+            />
+          ) : (
+            <div style={{
+              width: "50px",
+              height: "50px",
+              borderRadius: "50%",
+              background: "rgba(212, 175, 55, 0.1)",
+              border: "2px solid rgba(212, 175, 55, 0.3)",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              color: "var(--accent-gold)",
+              fontFamily: "var(--font-serif)",
+              fontSize: "1.4rem",
+              fontWeight: "700"
+            }}>
+              L
+            </div>
+          )}
+          <div>
+            <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "2.4rem", fontWeight: "700", margin: 0 }}>
+              {database.translate("organizerDashboard", user?.language)}
+            </h1>
+            {user?.businessName && (
+              <span style={{ fontSize: "0.85rem", color: "var(--accent-gold)", letterSpacing: "1px", textTransform: "uppercase", fontWeight: "600", display: "block", marginTop: "2px" }}>
+                {user.businessName}
+              </span>
+            )}
+          </div>
+        </div>
+        
+        {/* Tier status indicator */}
+        <div style={{
+          background: "rgba(255, 255, 255, 0.03)",
+          border: "1px solid rgba(255, 255, 255, 0.08)",
+          padding: "8px 16px",
+          borderRadius: "20px",
+          fontSize: "0.85rem",
+          display: "flex",
+          alignItems: "center",
+          gap: "8px"
+        }}>
+          <span style={{ color: "var(--text-secondary)" }}>Plan:</span>
+          <strong style={{
+            color: user?.subscription === "Enterprise" ? "#a855f7" : user?.subscription === "Pro" ? "var(--accent-gold)" : "var(--text-primary)",
+            textTransform: "uppercase",
+            fontSize: "0.8rem",
+            letterSpacing: "0.5px"
+          }}>
+            Luxe {user?.subscription || "Pro"}
+          </strong>
+        </div>
+      </div>
 
       {/* Grid of basic metrics widgets */}
       <section style={{
@@ -253,8 +314,8 @@ export default function OrganizerDashboard() {
             <DollarSign size={24} />
           </div>
           <div>
-            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block" }}>Total Revenue</span>
-            <span style={{ fontSize: "1.6rem", fontWeight: "700" }}>${analytics.totalRevenue.toLocaleString()}</span>
+            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block" }}>{database.translate("revenue", user?.language)}</span>
+            <span style={{ fontSize: "1.6rem", fontWeight: "700" }}>{database.formatPrice(analytics.totalRevenue, user?.currency)}</span>
           </div>
         </div>
 
@@ -263,7 +324,7 @@ export default function OrganizerDashboard() {
             <Users size={24} />
           </div>
           <div>
-            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block" }}>Tickets Sold</span>
+            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block" }}>{database.translate("ticketsSold", user?.language)}</span>
             <span style={{ fontSize: "1.6rem", fontWeight: "700" }}>{analytics.totalTicketsSold}</span>
           </div>
         </div>
@@ -285,7 +346,7 @@ export default function OrganizerDashboard() {
           <div>
             <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block" }}>Stripe Payout (Pending)</span>
             <span style={{ fontSize: "1.3rem", fontWeight: "700", display: "flex", alignItems: "center", gap: "6px" }}>
-              $4,820.00 <span style={{ fontSize: "0.7rem", color: "#10b981", background: "rgba(16, 185, 129, 0.08)", padding: "2px 6px", borderRadius: "4px" }}>Auto</span>
+              {database.formatPrice(4820, user?.currency)} <span style={{ fontSize: "0.7rem", color: "#10b981", background: "rgba(16, 185, 129, 0.08)", padding: "2px 6px", borderRadius: "4px" }}>Auto</span>
             </span>
           </div>
         </div>
@@ -293,7 +354,7 @@ export default function OrganizerDashboard() {
 
       {/* Operations Control Deck Section */}
       <h2 style={{ fontSize: "1.25rem", fontWeight: "600", marginBottom: "20px", display: "flex", alignItems: "center", gap: "8px" }}>
-        <ShieldCheck size={20} color="var(--accent-gold)" /> Backstage Control Suite
+        <ShieldCheck size={20} color="var(--accent-gold)" /> {database.translate("backstageControlSuite", user?.language)}
       </h2>
       <section style={{
         display: "grid",
@@ -320,8 +381,8 @@ export default function OrganizerDashboard() {
             <div style={{ background: "rgba(168, 85, 247, 0.1)", padding: "10px", borderRadius: "10px", color: "#a855f7", width: "max-content", marginBottom: "14px" }}>
               <Users size={20} />
             </div>
-            <h3 style={{ fontSize: "0.95rem", fontWeight: "600", marginBottom: "4px" }}>Guest CRM</h3>
-            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: "1.3" }}>Search directory, add VIP notes, and dispatch broadcasts.</p>
+            <h3 style={{ fontSize: "0.95rem", fontWeight: "600", marginBottom: "4px" }}>{database.translate("guestCRM", user?.language)}</h3>
+            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: "1.3" }}>{database.translate("crmDesc", user?.language)}</p>
           </div>
         </Link>
 
@@ -344,8 +405,8 @@ export default function OrganizerDashboard() {
             <div style={{ background: "rgba(16, 185, 129, 0.1)", padding: "10px", borderRadius: "10px", color: "#10b981", width: "max-content", marginBottom: "14px" }}>
               <Tag size={20} />
             </div>
-            <h3 style={{ fontSize: "0.95rem", fontWeight: "600", marginBottom: "4px" }}>Promo Code Engine</h3>
-            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: "1.3" }}>Generate discount codes, set tiers, track redemption rates.</p>
+            <h3 style={{ fontSize: "0.95rem", fontWeight: "600", marginBottom: "4px" }}>{database.translate("promoEngine", user?.language)}</h3>
+            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: "1.3" }}>{database.translate("promoDesc", user?.language)}</p>
           </div>
         </Link>
 
@@ -368,8 +429,8 @@ export default function OrganizerDashboard() {
             <div style={{ background: "rgba(14, 165, 233, 0.1)", padding: "10px", borderRadius: "10px", color: "#0ea5e9", width: "max-content", marginBottom: "14px" }}>
               <ClipboardList size={20} />
             </div>
-            <h3 style={{ fontSize: "0.95rem", fontWeight: "600", marginBottom: "4px" }}>Backstage Planner</h3>
-            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: "1.3" }}>Kanban checklist for production, catering, and artists.</p>
+            <h3 style={{ fontSize: "0.95rem", fontWeight: "600", marginBottom: "4px" }}>{database.translate("backstagePlanner", user?.language)}</h3>
+            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: "1.3" }}>{database.translate("plannerDesc", user?.language)}</p>
           </div>
         </Link>
 
@@ -392,8 +453,8 @@ export default function OrganizerDashboard() {
             <div style={{ background: "rgba(244, 63, 94, 0.1)", padding: "10px", borderRadius: "10px", color: "#f43f5e", width: "max-content", marginBottom: "14px" }}>
               <Layout size={20} />
             </div>
-            <h3 style={{ fontSize: "0.95rem", fontWeight: "600", marginBottom: "4px" }}>Layout Designer</h3>
-            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: "1.3" }}>Configure seating grids, designate corridors and VIP areas.</p>
+            <h3 style={{ fontSize: "0.95rem", fontWeight: "600", marginBottom: "4px" }}>{database.translate("layoutDesigner", user?.language)}</h3>
+            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: "1.3" }}>{database.translate("layoutDesc", user?.language)}</p>
           </div>
         </Link>
 
@@ -416,8 +477,8 @@ export default function OrganizerDashboard() {
             <div style={{ background: "rgba(212, 175, 55, 0.1)", padding: "10px", borderRadius: "10px", color: "var(--accent-gold)", width: "max-content", marginBottom: "14px" }}>
               <QrCode size={20} />
             </div>
-            <h3 style={{ fontSize: "0.95rem", fontWeight: "600", marginBottom: "4px" }}>Gate Scanner</h3>
-            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: "1.3" }}>Open live camera to verify digital QR code tickets at the door.</p>
+            <h3 style={{ fontSize: "0.95rem", fontWeight: "600", marginBottom: "4px" }}>{database.translate("gateScanner", user?.language)}</h3>
+            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: "1.3" }}>{database.translate("gateDesc", user?.language)}</p>
           </div>
         </Link>
       </section>
@@ -510,7 +571,7 @@ export default function OrganizerDashboard() {
                   <div style={{ display: "flex", gap: "12px", marginTop: "4px" }}>
                     {aiResponse.tiers.map((t, idx) => (
                       <span key={idx} style={{ background: "rgba(255,255,255,0.04)", padding: "2px 8px", borderRadius: "4px", border: "1px solid rgba(255,255,255,0.06)" }}>
-                        {t.name}: ${t.price}
+                        {t.name}: {database.formatPrice(t.price, user?.currency)}
                       </span>
                     ))}
                   </div>
@@ -625,7 +686,7 @@ export default function OrganizerDashboard() {
                   />
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Base Price ($)</label>
+                  <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Base Price ({user?.currency || "CAD"})</label>
                   <input 
                     type="number" 
                     required 
@@ -700,11 +761,11 @@ export default function OrganizerDashboard() {
                         <tr key={code.code} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                           <td style={{ padding: "12px 8px", fontWeight: "700", color: "var(--accent-gold)" }}>{code.code}</td>
                           <td style={{ padding: "12px 8px", color: "var(--text-secondary)" }}>
-                            {code.type === "percent" ? `${code.discount}% Off` : `$${code.discount} Off`}
+                            {code.type === "percent" ? `${code.discount}% Off` : `${database.formatPrice(code.discount, user?.currency)} Off`}
                           </td>
                           <td style={{ padding: "12px 8px", textAlign: "center" }}>{uses}</td>
                           <td style={{ padding: "12px 8px", textAlign: "right", fontWeight: "600", color: "var(--text-primary)" }}>
-                            ${attributedRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {database.formatPrice(attributedRevenue, user?.currency)}
                           </td>
                         </tr>
                       );

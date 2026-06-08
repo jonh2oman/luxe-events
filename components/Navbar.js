@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
 import { LogIn, LogOut, User, X, KeyRound, ShieldCheck } from "lucide-react";
+import { database } from "@/lib/database";
 
 export default function Navbar() {
   const { user, loading, login, signUp, logout } = useAuth();
@@ -89,7 +90,7 @@ export default function Navbar() {
             color: "var(--text-secondary)",
             transition: "color 0.3s"
           }} className="nav-link">
-            Discover
+            {database.translate("discover", user?.language)}
           </Link>
           <Link href="/dashboard/attendee" style={{
             fontSize: "0.95rem",
@@ -97,7 +98,7 @@ export default function Navbar() {
             color: "var(--text-secondary)",
             transition: "color 0.3s"
           }} className="nav-link">
-            My Tickets
+            {database.translate("myTickets", user?.language)}
           </Link>
           <Link href="/dashboard/organizer" style={{
             fontSize: "0.95rem",
@@ -105,7 +106,7 @@ export default function Navbar() {
             color: "var(--text-secondary)",
             transition: "color 0.3s"
           }} className="nav-link">
-            Organizer Panel
+            {database.translate("organizerPanel", user?.language)}
           </Link>
         </nav>
         
@@ -115,26 +116,53 @@ export default function Navbar() {
             <div style={{ width: "80px", height: "30px", background: "rgba(255,255,255,0.03)", borderRadius: "15px" }} className="shimmer-bg"></div>
           ) : user ? (
             <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-              {/* Profile badge */}
-              <div style={{
+              {/* Profile badge (Clickable to settings) */}
+              <Link href="/dashboard/settings" style={{ textDecoration: "none" }}>
+                <div style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  background: "rgba(255, 255, 255, 0.04)",
+                  padding: "6px 14px",
+                  borderRadius: "20px",
+                  border: "1px solid rgba(255, 255, 255, 0.05)",
+                  cursor: "pointer",
+                  transition: "background 0.2s"
+                }} className="profile-badge-link nav-link">
+                  {user.logo ? (
+                    <img 
+                      src={user.logo} 
+                      alt="Logo" 
+                      style={{ width: "16px", height: "16px", borderRadius: "50%", objectFit: "cover" }} 
+                    />
+                  ) : (
+                    <div style={{
+                      width: "8px",
+                      height: "8px",
+                      borderRadius: "50%",
+                      background: "#d4af37"
+                    }}></div>
+                  )}
+                  <span style={{ fontSize: "0.85rem", fontWeight: "500", color: "var(--text-primary)" }}>
+                    {user.name}
+                  </span>
+                </div>
+              </Link>
+
+              <Link href="/dashboard/settings" style={{
+                background: "transparent",
+                border: "none",
+                color: "var(--text-secondary)",
+                cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
-                gap: "8px",
-                background: "rgba(255, 255, 255, 0.04)",
-                padding: "6px 14px",
-                borderRadius: "20px",
-                border: "1px solid rgba(255, 255, 255, 0.05)"
-              }}>
-                <div style={{
-                  width: "8px",
-                  height: "8px",
-                  borderRadius: "50%",
-                  background: "#10b981"
-                }}></div>
-                <span style={{ fontSize: "0.85rem", fontWeight: "500", color: "var(--text-primary)" }}>
-                  {user.name}
-                </span>
-              </div>
+                gap: "4px",
+                fontSize: "0.85rem",
+                textDecoration: "none",
+                transition: "color 0.3s"
+              }} className="nav-link">
+                <User size={14} /> {database.translate("settings", user?.language)}
+              </Link>
               
               <button 
                 onClick={logout}
@@ -150,7 +178,7 @@ export default function Navbar() {
                 }}
                 className="nav-link"
               >
-                <LogOut size={14} /> Sign Out
+                <LogOut size={14} /> {database.translate("signOut", user?.language)}
               </button>
             </div>
           ) : (
@@ -166,7 +194,7 @@ export default function Navbar() {
                 gap: "6px"
               }}
             >
-              <LogIn size={14} /> Access Platform
+              <LogIn size={14} /> {database.translate("accessPlatform", user?.language)}
             </button>
           )}
         </div>

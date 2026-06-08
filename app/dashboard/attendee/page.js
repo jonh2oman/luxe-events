@@ -183,7 +183,7 @@ export default function AttendeeDashboard() {
                     </div>
                     <div>
                       <span style={{ color: "var(--text-muted)", display: "block" }}>Secured Amount</span>
-                      <span style={{ fontWeight: "500" }}>${selectedBooking.totalPrice}</span>
+                      <span style={{ fontWeight: "500" }}>{database.formatPrice(selectedBooking.totalPrice, user?.currency)}</span>
                     </div>
                   </div>
 

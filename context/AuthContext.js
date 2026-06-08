@@ -37,16 +37,32 @@ export function AuthProvider({ children }) {
       // LocalStorage Mock Auth Session
       const checkMockAuth = () => {
         const currentUser = localStorage.getItem("luxe_current_user");
+        const defaultUser = {
+          uid: "mock-user-123",
+          name: "Julian Sterling",
+          email: "julian@luxe.design",
+          role: "user",
+          language: "en",
+          currency: "CAD",
+          theme: "dark",
+          subscription: "Pro",
+          billingCycle: "monthly",
+          logo: null,
+          businessName: "Luxe Events Ltd",
+          businessAddress: "120 Pine St, Toronto, ON, Canada",
+          taxId: "GST-881273912-RT0001",
+          website: "https://luxe.design",
+          emailMarketing: true,
+          checkInAlerts: true
+        };
+
         if (currentUser) {
-          setUser(JSON.parse(currentUser));
+          const parsed = JSON.parse(currentUser);
+          // Upgrade profile with default fields if missing
+          const upgradedUser = { ...defaultUser, ...parsed };
+          localStorage.setItem("luxe_current_user", JSON.stringify(upgradedUser));
+          setUser(upgradedUser);
         } else {
-          // Set default user
-          const defaultUser = {
-            uid: "mock-user-123",
-            name: "Julian Sterling",
-            email: "julian@luxe.design",
-            role: "user"
-          };
           localStorage.setItem("luxe_current_user", JSON.stringify(defaultUser));
           setUser(defaultUser);
         }
@@ -106,8 +122,25 @@ export function AuthProvider({ children }) {
     }
   };
 
+  // Update profile fields
+  const updateProfileFields = async (fields) => {
+    const updatedUser = { ...user, ...fields };
+    if (isRealFirebase && auth && auth.currentUser) {
+      try {
+        if (fields.name) {
+          await updateProfile(auth.currentUser, { displayName: fields.name });
+        }
+      } catch (err) {
+        console.error("Firebase profile update failed:", err);
+      }
+    }
+    localStorage.setItem("luxe_current_user", JSON.stringify(updatedUser));
+    setUser(updatedUser);
+    return updatedUser;
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, signUp, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, signUp, logout, updateProfileFields }}>
       {children}
     </AuthContext.Provider>
   );
