@@ -342,8 +342,8 @@ export default function SettingsPage() {
               gap: "12px",
               width: "100%",
               padding: "14px 18px",
-              background: activeTab === "profile" ? "rgba(212, 175, 55, 0.12)" : "rgba(255, 255, 255, 0.02)",
-              border: activeTab === "profile" ? "1px solid rgba(212, 175, 55, 0.35)" : "1px solid rgba(255, 255, 255, 0.05)",
+              background: activeTab === "profile" ? "rgba(212, 175, 55, 0.12)" : "var(--glass-bg-accent)",
+              border: activeTab === "profile" ? "1px solid rgba(212, 175, 55, 0.35)" : "1px solid var(--border-accent)",
               borderRadius: "12px",
               color: activeTab === "profile" ? "var(--accent-gold)" : "var(--text-secondary)",
               fontSize: "0.95rem",
@@ -365,8 +365,8 @@ export default function SettingsPage() {
               gap: "12px",
               width: "100%",
               padding: "14px 18px",
-              background: activeTab === "localization" ? "rgba(212, 175, 55, 0.12)" : "rgba(255, 255, 255, 0.02)",
-              border: activeTab === "localization" ? "1px solid rgba(212, 175, 55, 0.35)" : "1px solid rgba(255, 255, 255, 0.05)",
+              background: activeTab === "localization" ? "rgba(212, 175, 55, 0.12)" : "var(--glass-bg-accent)",
+              border: activeTab === "localization" ? "1px solid rgba(212, 175, 55, 0.35)" : "1px solid var(--border-accent)",
               borderRadius: "12px",
               color: activeTab === "localization" ? "var(--accent-gold)" : "var(--text-secondary)",
               fontSize: "0.95rem",
@@ -388,8 +388,8 @@ export default function SettingsPage() {
               gap: "12px",
               width: "100%",
               padding: "14px 18px",
-              background: activeTab === "billing" ? "rgba(212, 175, 55, 0.12)" : "rgba(255, 255, 255, 0.02)",
-              border: activeTab === "billing" ? "1px solid rgba(212, 175, 55, 0.35)" : "1px solid rgba(255, 255, 255, 0.05)",
+              background: activeTab === "billing" ? "rgba(212, 175, 55, 0.12)" : "var(--glass-bg-accent)",
+              border: activeTab === "billing" ? "1px solid rgba(212, 175, 55, 0.35)" : "1px solid var(--border-accent)",
               borderRadius: "12px",
               color: activeTab === "billing" ? "var(--accent-gold)" : "var(--text-secondary)",
               fontSize: "0.95rem",
@@ -411,8 +411,8 @@ export default function SettingsPage() {
               gap: "12px",
               width: "100%",
               padding: "14px 18px",
-              background: activeTab === "preferences" ? "rgba(212, 175, 55, 0.12)" : "rgba(255, 255, 255, 0.02)",
-              border: activeTab === "preferences" ? "1px solid rgba(212, 175, 55, 0.35)" : "1px solid rgba(255, 255, 255, 0.05)",
+              background: activeTab === "preferences" ? "rgba(212, 175, 55, 0.12)" : "var(--glass-bg-accent)",
+              border: activeTab === "preferences" ? "1px solid rgba(212, 175, 55, 0.35)" : "1px solid var(--border-accent)",
               borderRadius: "12px",
               color: activeTab === "preferences" ? "var(--accent-gold)" : "var(--text-secondary)",
               fontSize: "0.95rem",
@@ -430,11 +430,12 @@ export default function SettingsPage() {
         {/* Configuration Panel Content */}
         <div className="glass-panel" style={{
           padding: "40px",
-          background: "rgba(10, 15, 30, 0.45)",
+          background: "var(--glass-bg)",
           borderRadius: "20px",
-          border: "1px solid rgba(255,255,255,0.08)",
-          boxShadow: "0 15px 40px rgba(0,0,0,0.5)",
-          backdropFilter: "blur(20px)",
+          border: "1px solid var(--glass-border)",
+          boxShadow: "var(--glass-shadow)",
+          backdropFilter: "var(--glass-blur)",
+          WebkitBackdropFilter: "var(--glass-blur)",
           minHeight: "500px"
         }}>
           
@@ -1097,8 +1098,8 @@ export default function SettingsPage() {
                     <button
                       onClick={() => handlePreferenceChange("theme", "dark")}
                       style={{
-                        background: (user.theme === "dark" || !user.theme) ? "rgba(212,175,55,0.08)" : "rgba(255,255,255,0.02)",
-                        border: (user.theme === "dark" || !user.theme) ? "2px solid var(--accent-gold)" : "1px solid rgba(255,255,255,0.06)",
+                        background: (user.theme === "dark" || !user.theme) ? "rgba(212,175,55,0.08)" : "var(--glass-bg-accent)",
+                        border: (user.theme === "dark" || !user.theme) ? "2px solid var(--accent-gold)" : "1px solid var(--border-accent)",
                         padding: "16px",
                         borderRadius: "12px",
                         cursor: "pointer",
@@ -1106,15 +1107,15 @@ export default function SettingsPage() {
                         transition: "all 0.2s"
                       }}
                     >
-                      <strong style={{ display: "block", fontSize: "0.9rem", color: "#fff" }}>Dark Obsidian</strong>
+                      <strong style={{ display: "block", fontSize: "0.9rem", color: "var(--text-primary)" }}>Dark Obsidian</strong>
                       <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Deep glassmorphism canvas.</span>
                     </button>
 
                     <button
                       onClick={() => handlePreferenceChange("theme", "light")}
                       style={{
-                        background: user.theme === "light" ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.02)",
-                        border: user.theme === "light" ? "2px solid var(--accent-gold)" : "1px solid rgba(255,255,255,0.06)",
+                        background: user.theme === "light" ? "rgba(212,175,55,0.08)" : "var(--glass-bg-accent)",
+                        border: user.theme === "light" ? "2px solid var(--accent-gold)" : "1px solid var(--border-accent)",
                         padding: "16px",
                         borderRadius: "12px",
                         cursor: "pointer",
@@ -1122,15 +1123,15 @@ export default function SettingsPage() {
                         transition: "all 0.2s"
                       }}
                     >
-                      <strong style={{ display: "block", fontSize: "0.9rem", color: "#fff" }}>Frost White</strong>
+                      <strong style={{ display: "block", fontSize: "0.9rem", color: "var(--text-primary)" }}>Frost White</strong>
                       <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Light clean layout contrast.</span>
                     </button>
 
                     <button
                       onClick={() => handlePreferenceChange("theme", "gold")}
                       style={{
-                        background: user.theme === "gold" ? "rgba(212,175,55,0.12)" : "rgba(255,255,255,0.02)",
-                        border: user.theme === "gold" ? "2px solid var(--accent-gold)" : "1px solid rgba(255,255,255,0.06)",
+                        background: user.theme === "gold" ? "rgba(212,175,55,0.12)" : "var(--glass-bg-accent)",
+                        border: user.theme === "gold" ? "2px solid var(--accent-gold)" : "1px solid var(--border-accent)",
                         padding: "16px",
                         borderRadius: "12px",
                         cursor: "pointer",

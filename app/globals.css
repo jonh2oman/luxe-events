@@ -22,6 +22,11 @@
   --glass-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.6);
   --glass-blur: blur(16px);
   
+  /* Sub-elements inside glass */
+  --glass-bg-accent: rgba(255, 255, 255, 0.03);
+  --glass-bg-hover: rgba(255, 255, 255, 0.06);
+  --border-accent: rgba(255, 255, 255, 0.08);
+
   /* Fonts */
   --font-sans: 'Outfit', sans-serif;
   --font-serif: 'Playfair Display', serif;
@@ -234,11 +239,31 @@ html[data-theme="light"] {
   --glass-border: rgba(15, 23, 42, 0.08);
   --glass-border-gold: rgba(212, 175, 55, 0.35);
   --glass-shadow: 0 12px 40px 0 rgba(15, 23, 42, 0.08);
+
+  --glass-bg-accent: rgba(15, 23, 42, 0.03);
+  --glass-bg-hover: rgba(15, 23, 42, 0.06);
+  --border-accent: rgba(15, 23, 42, 0.08);
 }
 
 html[data-theme="light"] body {
   background: radial-gradient(circle at 50% -20%, #e2e8f0 0%, #f8fafc 70%) !important;
   color: var(--text-primary) !important;
+}
+
+html[data-theme="light"] .glass-input {
+  background: rgba(15, 23, 42, 0.04) !important;
+  border: 1px solid rgba(15, 23, 42, 0.12) !important;
+  color: #0f172a !important;
+}
+
+html[data-theme="light"] .glass-input::placeholder {
+  color: #94a3b8 !important;
+}
+
+html[data-theme="light"] .glass-input:focus {
+  background: rgba(15, 23, 42, 0.06) !important;
+  border-color: var(--accent-gold) !important;
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.15) !important;
 }
 
 /* Gold Velvet (Royal Theme) */
@@ -259,9 +284,24 @@ html[data-theme="gold"] {
   --glass-border: rgba(245, 158, 11, 0.15);
   --glass-border-gold: rgba(245, 158, 11, 0.4);
   --glass-shadow: 0 12px 40px 0 rgba(21, 15, 3, 0.75);
+
+  --glass-bg-accent: rgba(245, 158, 11, 0.04);
+  --glass-bg-hover: rgba(245, 158, 11, 0.08);
+  --border-accent: rgba(245, 158, 11, 0.12);
 }
 
 html[data-theme="gold"] body {
   background: radial-gradient(circle at 50% -20%, #51360a 0%, #150f03 70%) !important;
   color: var(--text-primary) !important;
+}
+
+html[data-theme="gold"] .glass-input {
+  background: rgba(245, 158, 11, 0.03) !important;
+  border: 1px solid rgba(245, 158, 11, 0.15) !important;
+  color: #fffbeb !important;
+}
+
+html[data-theme="gold"] .glass-input:focus {
+  background: rgba(245, 158, 11, 0.06) !important;
+  border-color: var(--accent-gold) !important;
 }

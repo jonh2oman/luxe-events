@@ -56,11 +56,11 @@ export default function Navbar() {
         justifyContent: "space-between",
         alignItems: "center",
         borderRadius: "30px",
-        border: "1px solid rgba(255, 255, 255, 0.08)",
-        boxShadow: "0 10px 30px rgba(0, 0, 0, 0.4)",
-        background: "rgba(10, 15, 30, 0.65)",
-        backdropFilter: "blur(12px)",
-        WebkitBackdropFilter: "blur(12px)",
+        border: "1px solid var(--glass-border)",
+        boxShadow: "var(--glass-shadow)",
+        background: "var(--glass-bg)",
+        backdropFilter: "var(--glass-blur)",
+        WebkitBackdropFilter: "var(--glass-blur)",
         marginTop: "16px"
       }}>
         {/* Brand Logo */}
@@ -130,10 +130,10 @@ export default function Navbar() {
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
-                  background: "rgba(255, 255, 255, 0.04)",
+                  background: "var(--glass-bg-accent)",
                   padding: "6px 14px",
                   borderRadius: "20px",
-                  border: "1px solid rgba(255, 255, 255, 0.05)",
+                  border: "1px solid var(--border-accent)",
                   cursor: "pointer",
                   transition: "background 0.2s"
                 }} className="profile-badge-link nav-link">
