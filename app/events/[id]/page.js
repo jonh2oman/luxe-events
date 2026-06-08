@@ -50,6 +50,18 @@ function EventDetail() {
     return cached;
   };
 
+  // Compute a unique client ID for this tab session to distinguish tabs/sessions
+  const getClientId = () => {
+    if (typeof window === "undefined") return "Guest:main";
+    const userName = getSessionUser();
+    let tabId = window.sessionStorage.getItem("luxe_tab_id");
+    if (!tabId) {
+      tabId = Math.random().toString(36).substring(2, 9);
+      window.sessionStorage.setItem("luxe_tab_id", tabId);
+    }
+    return `${userName}:${tabId}`;
+  };
+
   useEffect(() => {
     database.getEventById(id).then(currentEvent => {
       if (!currentEvent) {
@@ -70,14 +82,14 @@ function EventDetail() {
   // Subscribe to real-time presence of other attendees
   useEffect(() => {
     if (!event) return;
-    const userName = getSessionUser();
+    const clientId = getClientId();
 
-    const unsubscribe = database.subscribeToPresence(event.id, userName, (updatedPresence) => {
+    const unsubscribe = database.subscribeToPresence(event.id, clientId, (updatedPresence) => {
       setPresenceMap(updatedPresence);
     });
 
     return () => {
-      database.updatePresence(event.id, userName, null, "disconnect");
+      database.updatePresence(event.id, clientId, null, "disconnect");
       unsubscribe();
     };
   }, [event, user]);
@@ -87,16 +99,16 @@ function EventDetail() {
     if (!event) return;
     const isSelected = selectedSeats.some(s => s.id === seatId);
     if (isSelected) return; // Maintain selected presence
-    const userName = getSessionUser();
-    database.updatePresence(event.id, userName, seatId, "hover");
+    const clientId = getClientId();
+    database.updatePresence(event.id, clientId, seatId, "hover");
   };
 
   const handleMouseLeaveSeat = (seatId) => {
     if (!event) return;
     const isSelected = selectedSeats.some(s => s.id === seatId);
     if (isSelected) return;
-    const userName = getSessionUser();
-    database.updatePresence(event.id, userName, seatId, "unhover");
+    const clientId = getClientId();
+    database.updatePresence(event.id, clientId, seatId, "unhover");
   };
 
   if (!event) {
@@ -113,16 +125,17 @@ function EventDetail() {
     
     const isSelected = selectedSeats.some(s => s.id === seat.id);
     const userName = getSessionUser();
+    const clientId = getClientId();
 
     if (isSelected) {
       setSelectedSeats(selectedSeats.filter(s => s.id !== seat.id));
-      database.updatePresence(event.id, userName, seat.id, "hover");
+      database.updatePresence(event.id, clientId, seat.id, "hover");
     } else {
       // Hold the seat in database first
       const held = await database.holdSeats(event.id, [seat.id], userName);
       if (held) {
         setSelectedSeats([...selectedSeats, seat]);
-        database.updatePresence(event.id, userName, seat.id, "select");
+        database.updatePresence(event.id, clientId, seat.id, "select");
       } else {
         alert(`Seat ${seat.id} is temporarily held by another attendee. Please choose a different seat.`);
       }
