@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { database } from "@/lib/database";
+import { isRealFirebase } from "@/lib/firebase";
 import { 
   User, Globe, CreditCard, Sliders, Upload, Check, FileText, 
   Building, Mail, MapPin, Globe2, ShieldCheck, CheckCircle2, AlertCircle
@@ -1211,19 +1212,33 @@ export default function SettingsPage() {
                 {/* Account Security Warnings */}
                 <div style={{
                   padding: "20px",
-                  background: "rgba(239, 68, 68, 0.04)",
-                  border: "1px solid rgba(239, 68, 68, 0.15)",
+                  background: isRealFirebase ? "rgba(16, 185, 129, 0.04)" : "rgba(239, 68, 68, 0.04)",
+                  border: isRealFirebase ? "1px solid rgba(16, 185, 129, 0.15)" : "1px solid rgba(239, 68, 68, 0.15)",
                   borderRadius: "12px",
                   display: "flex",
                   gap: "16px",
                   alignItems: "flex-start",
                   marginTop: "12px"
                 }}>
-                  <AlertCircle size={20} style={{ color: "#ef4444", flexShrink: 0, marginTop: "2px" }} />
+                  {isRealFirebase ? (
+                    <ShieldCheck size={20} style={{ color: "#10b981", flexShrink: 0, marginTop: "2px" }} />
+                  ) : (
+                    <AlertCircle size={20} style={{ color: "#ef4444", flexShrink: 0, marginTop: "2px" }} />
+                  )}
                   <div>
-                    <span style={{ display: "block", fontSize: "0.9rem", fontWeight: "600", color: "#ef4444" }}>Security Control Zone</span>
+                    <span style={{ 
+                      display: "block", 
+                      fontSize: "0.9rem", 
+                      fontWeight: "600", 
+                      color: isRealFirebase ? "#10b981" : "#ef4444" 
+                    }}>
+                      {isRealFirebase ? "Live Cloud Production Mode" : "Sandbox Session Mode"}
+                    </span>
                     <span style={{ display: "block", fontSize: "0.78rem", color: "var(--text-muted)", marginTop: "4px" }}>
-                      We are currently running in secure sandboxed session mode. Data saved here updates the local cache session storage and updates dynamic views on-the-fly.
+                      {isRealFirebase 
+                        ? "Your account is synchronized with the live Firebase Firestore database and secure Stripe billing services."
+                        : "We are currently running in offline session mode. Data saved here updates the local cache session storage and updates dynamic views on-the-fly."
+                      }
                     </span>
                   </div>
                 </div>
