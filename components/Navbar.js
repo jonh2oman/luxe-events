@@ -116,6 +116,15 @@ export default function Navbar() {
               {database.translate("organizerPanel", user?.language)}
             </Link>
           )}
+
+          <Link href="/help" style={{
+            fontSize: "0.95rem",
+            fontWeight: "500",
+            color: "var(--text-secondary)",
+            transition: "color 0.3s"
+          }} className="nav-link">
+            {database.translate("help", user?.language)}
+          </Link>
         </nav>
         
         {/* Auth section */}
