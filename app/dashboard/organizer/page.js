@@ -53,9 +53,53 @@ export default function OrganizerDashboard() {
 
   useEffect(() => {
     setAnalytics(database.getOrganizerAnalytics());
+    
+    // Load custom layouts first so we can reference them during edit load
+    const templates = localStorage.getItem("luxe_layout_templates");
+    let parsedTemplates = [];
+    if (templates) {
+      parsedTemplates = JSON.parse(templates);
+      setLayoutTemplates(parsedTemplates);
+      if (parsedTemplates.length > 0) {
+        setSelectedTemplateName(parsedTemplates[0].name);
+      }
+    }
+
     database.getEvents().then(allEvents => {
       setEvents(allEvents);
+      
+      // Parse search params for edit trigger
+      if (typeof window !== "undefined") {
+        const params = new URLSearchParams(window.location.search);
+        const editId = params.get("edit");
+        if (editId) {
+          const eventToEdit = allEvents.find(e => e.id === editId);
+          if (eventToEdit) {
+            setEditingEventId(eventToEdit.id);
+            setFormTitle(eventToEdit.title);
+            setFormSubtitle(eventToEdit.subtitle || "");
+            setFormDesc(eventToEdit.description || "");
+            setFormDate(eventToEdit.date || "");
+            setFormTime(eventToEdit.time || "");
+            setFormLoc(eventToEdit.location || "");
+            setFormPrice(eventToEdit.price || 40);
+            
+            if (eventToEdit.seatingLayoutPreset) {
+              setSelectedTemplateName(eventToEdit.seatingLayoutPreset);
+            } else {
+              setSelectedTemplateName("");
+            }
+
+            setTimeout(() => {
+              document.getElementById("experience-form-container")?.scrollIntoView({ behavior: "smooth" });
+              const firstInput = document.querySelector("#experience-form-container input");
+              if (firstInput) firstInput.focus();
+            }, 300);
+          }
+        }
+      }
     });
+
     database.getBookings().then(allBookings => {
       setBookings(allBookings);
     });
@@ -65,16 +109,6 @@ export default function OrganizerDashboard() {
     database.getPlannerTasks().then(allTasks => {
       setPlannerTasks(allTasks);
     });
-
-    // Load custom layouts
-    const templates = localStorage.getItem("luxe_layout_templates");
-    if (templates) {
-      const parsed = JSON.parse(templates);
-      setLayoutTemplates(parsed);
-      if (parsed.length > 0) {
-        setSelectedTemplateName(parsed[0].name);
-      }
-    }
   }, []);
 
   const aiLoadingSteps = [
@@ -207,6 +241,8 @@ export default function OrganizerDashboard() {
         time: formTime || "19:00 - 22:00",
         location: formLoc,
         price: parseInt(formPrice),
+        seatingLayoutPreset: selectedTemplateName,
+        ...(seats ? { seats } : {}),
         ticketTiers
       });
 
@@ -1361,7 +1397,40 @@ export default function OrganizerDashboard() {
 
           {/* Active Campaign lists */}
           <div className="glass-panel" style={{ padding: "32px" }}>
-            <h3 style={{ fontSize: "1.1rem", fontWeight: "600", marginBottom: "20px" }}>Your Listed Campaigns</h3>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <h3 style={{ fontSize: "1.1rem", fontWeight: "600", margin: 0 }}>Your Listed Campaigns</h3>
+              <button
+                onClick={() => {
+                  setEditingEventId(null);
+                  setFormTitle("");
+                  setFormSubtitle("");
+                  setFormDesc("");
+                  setFormDate("");
+                  setFormTime("");
+                  setFormLoc("");
+                  setFormPrice(40);
+                  setAiResponse(null);
+                  document.getElementById("experience-form-container")?.scrollIntoView({ behavior: "smooth" });
+                  setTimeout(() => {
+                    const firstInput = document.querySelector("#experience-form-container input");
+                    if (firstInput) firstInput.focus();
+                  }, 300);
+                }}
+                className="btn-primary"
+                style={{
+                  padding: "6px 14px",
+                  fontSize: "0.8rem",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                  fontWeight: "600",
+                  borderRadius: "8px",
+                  cursor: "pointer"
+                }}
+              >
+                <Plus size={14} /> Add Event
+              </button>
+            </div>
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {events.map((event) => (
                 <div 
@@ -1391,20 +1460,36 @@ export default function OrganizerDashboard() {
                         setFormTime(event.time || "");
                         setFormLoc(event.location || "");
                         setFormPrice(event.price || 40);
+                        if (event.seatingLayoutPreset) {
+                          setSelectedTemplateName(event.seatingLayoutPreset);
+                        } else {
+                          setSelectedTemplateName("");
+                        }
                         document.getElementById("experience-form-container")?.scrollIntoView({ behavior: "smooth" });
+                        setTimeout(() => {
+                          const firstInput = document.querySelector("#experience-form-container input");
+                          if (firstInput) firstInput.focus();
+                        }, 300);
                       }}
                       style={{
-                        background: "rgba(255, 255, 255, 0.03)",
-                        border: "1px solid rgba(255,255,255,0.1)",
-                        color: "var(--text-secondary)",
-                        padding: "4px 10px",
-                        borderRadius: "8px",
+                        background: "rgba(212, 175, 55, 0.05)",
+                        border: "1px solid rgba(212,175,55,0.2)",
+                        color: "var(--accent-gold)",
+                        padding: "4px 12px",
+                        borderRadius: "6px",
                         fontSize: "0.75rem",
                         fontWeight: "600",
                         cursor: "pointer",
                         transition: "all 0.2s"
                       }}
-                      className="nav-link"
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "rgba(212, 175, 55, 0.15)";
+                        e.currentTarget.style.borderColor = "var(--accent-gold)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "rgba(212, 175, 55, 0.05)";
+                        e.currentTarget.style.borderColor = "rgba(212, 175, 55, 0.2)";
+                      }}
                     >
                       Edit
                     </button>

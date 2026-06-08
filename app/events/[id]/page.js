@@ -280,6 +280,42 @@ function EventDetail() {
   return (
     <main style={{ padding: "0 24px", maxWidth: "1250px", margin: "0 auto", marginTop: "40px" }}>
       
+      {/* Organizer Editor Alert Banner */}
+      {user?.role === "organizer" && (
+        <div className="glass-panel-gold pulse-border" style={{
+          padding: "16px 24px",
+          borderRadius: "16px",
+          marginBottom: "24px",
+          background: "linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(12, 15, 36, 0.9) 100%)",
+          border: "1px solid var(--accent-gold)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "16px",
+          boxShadow: "0 0 15px rgba(212, 175, 55, 0.2)"
+        }}>
+          <div>
+            <h4 style={{ color: "var(--accent-gold)", fontWeight: "600", fontSize: "1.05rem", margin: 0, display: "flex", alignItems: "center", gap: "8px" }}>
+              <ShieldCheck size={18} color="var(--accent-gold)" /> Organizer View Mode
+            </h4>
+            <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", margin: "4px 0 0 0", lineHeight: "1.4" }}>
+              You are viewing this experience details page. You can modify its seating configuration, details, or cancel the event.
+            </p>
+          </div>
+          <Link href={`/dashboard/organizer?edit=${event.id}`} className="btn-primary" style={{
+            padding: "8px 16px",
+            fontSize: "0.85rem",
+            fontWeight: "600",
+            borderRadius: "8px",
+            whiteSpace: "nowrap",
+            textDecoration: "none",
+            display: "inline-block"
+          }}>
+            Edit Event Details
+          </Link>
+        </div>
+      )}
+
       {/* Group Split Booking Banner */}
       {splitGroupId && (
         <div className="glass-panel-gold pulse-border" style={{
