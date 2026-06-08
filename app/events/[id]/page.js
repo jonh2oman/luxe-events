@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { Calendar, MapPin, Clock, ArrowLeft, ShieldCheck, Armchair, Ticket, Users } from "lucide-react";
+import { Calendar, MapPin, Clock, ArrowLeft, ShieldCheck, Armchair, Ticket, Users, Info } from "lucide-react";
 import Link from "next/link";
 import { database } from "@/lib/database";
 import confetti from "canvas-confetti";
@@ -42,6 +42,7 @@ function EventDetail() {
   const [promoError, setPromoError] = useState("");
   const [promoSuccess, setPromoSuccess] = useState("");
   const [perspective3D, setPerspective3D] = useState(false);
+  const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
 
   const calculateSeatView = (seatId) => {
     if (!seatId) return null;
@@ -326,6 +327,42 @@ function EventDetail() {
     }
   }
   const totalPrice = Math.max(0, basePrice - discountAmount);
+
+  const getPricingSplit = () => {
+    let artistAmount = 0;
+    let venueAmount = 0;
+    let luxeAmount = 0;
+
+    selectedSeats.forEach(seat => {
+      if (seat.price >= 150) {
+        artistAmount += seat.price * 0.85;
+        venueAmount += seat.price * 0.10;
+        luxeAmount += seat.price * 0.05;
+      } else {
+        artistAmount += seat.price * 0.75;
+        venueAmount += seat.price * 0.15;
+        luxeAmount += seat.price * 0.10;
+      }
+    });
+
+    if (basePrice > 0 && discountAmount > 0) {
+      const ratio = totalPrice / basePrice;
+      artistAmount *= ratio;
+      venueAmount *= ratio;
+      luxeAmount *= ratio;
+    }
+
+    const totalCalculated = artistAmount + venueAmount + luxeAmount;
+    
+    return {
+      artistAmount,
+      venueAmount,
+      luxeAmount,
+      artistPercent: totalCalculated > 0 ? Math.round((artistAmount / totalCalculated) * 100) : 75,
+      venuePercent: totalCalculated > 0 ? Math.round((venueAmount / totalCalculated) * 100) : 15,
+      luxePercent: totalCalculated > 0 ? (100 - Math.round((artistAmount / totalCalculated) * 100) - Math.round((venueAmount / totalCalculated) * 100)) : 10
+    };
+  };
 
   // Run checkout booking
   const handleBooking = async () => {
@@ -1046,6 +1083,70 @@ function EventDetail() {
                   </div>
 
                   {/* Summary & Buttons */}
+                  {showPriceBreakdown && selectedSeats.length > 0 && (() => {
+                    const split = getPricingSplit();
+                    return (
+                      <div 
+                        className="glass-panel" 
+                        style={{
+                          background: "rgba(6, 8, 19, 0.95)",
+                          border: "1px solid rgba(212, 175, 55, 0.25)",
+                          padding: "16px",
+                          borderRadius: "12px",
+                          marginBottom: "20px",
+                          boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+                          animation: "modalFadeIn 0.2s ease-out"
+                        }}
+                      >
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                          <span style={{ fontSize: "0.75rem", fontWeight: "700", textTransform: "uppercase", color: "var(--accent-gold)", letterSpacing: "1px" }}>
+                            All-In Price Breakdown
+                          </span>
+                          <span style={{ fontSize: "0.65rem", color: "var(--text-muted)" }}>100% Transparent</span>
+                        </div>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                          {/* Artist Share */}
+                          <div>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", marginBottom: "4px" }}>
+                              <span style={{ color: "var(--text-secondary)" }}>👨‍🎤 Artist / Performer Share ({split.artistPercent}%)</span>
+                              <strong style={{ color: "var(--text-primary)" }}>{database.formatPrice(split.artistAmount, user?.currency)}</strong>
+                            </div>
+                            <div style={{ height: "6px", background: "rgba(255,255,255,0.03)", borderRadius: "3px", overflow: "hidden" }}>
+                              <div style={{ width: `${split.artistPercent}%`, height: "100%", background: "linear-gradient(90deg, #d4af37, #fbbf24)", borderRadius: "3px" }} />
+                            </div>
+                          </div>
+
+                          {/* Venue Share */}
+                          <div>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", marginBottom: "4px" }}>
+                              <span style={{ color: "var(--text-secondary)" }}>🏛️ Venue & Staff Operations ({split.venuePercent}%)</span>
+                              <strong style={{ color: "var(--text-primary)" }}>{database.formatPrice(split.venueAmount, user?.currency)}</strong>
+                            </div>
+                            <div style={{ height: "6px", background: "rgba(255,255,255,0.03)", borderRadius: "3px", overflow: "hidden" }}>
+                              <div style={{ width: `${split.venuePercent}%`, height: "100%", background: "linear-gradient(90deg, #cbd5e1, #94a3b8)", borderRadius: "3px" }} />
+                            </div>
+                          </div>
+
+                          {/* Luxe Fee */}
+                          <div>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.75rem", marginBottom: "4px" }}>
+                              <span style={{ color: "var(--text-secondary)" }}>🎫 Luxe Platform Service Fee ({split.luxePercent}%)</span>
+                              <strong style={{ color: "var(--text-primary)" }}>{database.formatPrice(split.luxeAmount, user?.currency)}</strong>
+                            </div>
+                            <div style={{ height: "6px", background: "rgba(255,255,255,0.03)", borderRadius: "3px", overflow: "hidden" }}>
+                              <div style={{ width: `${split.luxePercent}%`, height: "100%", background: "linear-gradient(90deg, #0d9488, #14b8a6)", borderRadius: "3px" }} />
+                            </div>
+                          </div>
+                        </div>
+
+                        <p style={{ fontSize: "0.68rem", color: "var(--text-muted)", marginTop: "12px", textAlign: "center", borderTop: "1px solid rgba(255,255,255,0.05)", paddingTop: "8px", marginBottom: 0 }}>
+                          🛡️ All taxes and local delivery fees included. No surprises at checkout.
+                        </p>
+                      </div>
+                    );
+                  })()}
+
                   <div style={{
                     borderTop: "1px solid rgba(255, 255, 255, 0.08)",
                     paddingTop: "16px",
@@ -1060,7 +1161,25 @@ function EventDetail() {
                           Original: {database.formatPrice(basePrice, user?.currency)}
                         </span>
                       )}
-                      <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block" }}>Total Amount</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>Total Amount</span>
+                        <button
+                          onClick={() => setShowPriceBreakdown(!showPriceBreakdown)}
+                          style={{
+                            background: "transparent",
+                            border: "none",
+                            padding: 0,
+                            cursor: "pointer",
+                            color: "var(--accent-gold)",
+                            display: "inline-flex",
+                            alignItems: "center"
+                          }}
+                          className="nav-link"
+                          title="Click to view all-in price breakdown"
+                        >
+                          <Info size={13} style={{ transform: "translateY(-1px)" }} />
+                        </button>
+                      </div>
                       <span style={{ fontSize: "1.5rem", fontWeight: "700", color: "var(--text-primary)" }}>{database.formatPrice(totalPrice, user?.currency)}</span>
                     </div>
                     

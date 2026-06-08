@@ -73,6 +73,11 @@ export default function AttendeeDashboard() {
   const [isVisualizing, setIsVisualizing] = useState(false);
   const [visualizerBars, setVisualizerBars] = useState(Array.from({ length: 24 }, () => 15));
 
+  // Phase 11 Q&A states
+  const [fanQuestions, setFanQuestions] = useState([]);
+  const [newQuestionText, setNewQuestionText] = useState("");
+  const [submittingQuestion, setSubmittingQuestion] = useState(false);
+
   // 3D Tilt Rotate coordinates
   const [rotateX, setRotateX] = useState(0);
   const [rotateY, setRotateY] = useState(0);
@@ -216,7 +221,7 @@ export default function AttendeeDashboard() {
     return () => clearInterval(interval);
   }, [activeTabSub, isVisualizing]);
 
-  // Lighting BroadcastChannel listener
+  // Lighting BroadcastChannel listener & Q&A loader
   useEffect(() => {
     if (!selectedBooking) return;
     const channel = new BroadcastChannel(`luxe_lighting_${selectedBooking.eventId}`);
@@ -233,7 +238,17 @@ export default function AttendeeDashboard() {
       setLightingMode("laser_sweep");
     }
 
-    return () => channel.close();
+    // Load Q&A questions and poll every 5s
+    const loadQuestions = () => {
+      database.getFanQuestions(selectedBooking.eventId).then(setFanQuestions);
+    };
+    loadQuestions();
+    const qInterval = setInterval(loadQuestions, 5000);
+
+    return () => {
+      channel.close();
+      clearInterval(qInterval);
+    };
   }, [selectedBooking]);
 
   useEffect(() => {
@@ -252,6 +267,32 @@ export default function AttendeeDashboard() {
     const sentMsg = await database.sendMessage(selectedBooking.eventId, user.name, newMessage);
     if (sentMsg) {
       setNewMessage("");
+    }
+  };
+
+  // Handle submitting Q&A question to artist
+  const handleSubmitQuestion = async (e) => {
+    e.preventDefault();
+    if (!newQuestionText.trim() || !selectedBooking || !user) return;
+
+    setSubmittingQuestion(true);
+    try {
+      const success = await database.submitFanQuestion({
+        eventId: selectedBooking.eventId,
+        eventTitle: selectedBooking.eventTitle,
+        userName: user.name,
+        userEmail: user.email,
+        questionText: newQuestionText
+      });
+      if (success) {
+        setNewQuestionText("");
+        // Refresh local Q&A list
+        database.getFanQuestions(selectedBooking.eventId).then(setFanQuestions);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSubmittingQuestion(false);
     }
   };
 
@@ -1961,6 +2002,100 @@ export default function AttendeeDashboard() {
                           Disconnect Livestream Feed
                         </button>
                       )}
+                    </div>
+
+                    {/* Q&A / Fan Mail Box */}
+                    <div style={{ marginTop: "32px", paddingTop: "24px", borderTop: "1px solid rgba(255, 255, 255, 0.08)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "16px" }}>
+                        <Sparkles size={16} color="var(--accent-gold)" />
+                        <h4 style={{ fontSize: "1rem", fontWeight: "600" }}>Backstage Artist Q&A & Fan Mail</h4>
+                      </div>
+
+                      <form onSubmit={handleSubmitQuestion} style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "24px" }}>
+                        <textarea
+                          placeholder="Type your question or message for the artist here..."
+                          value={newQuestionText}
+                          onChange={(e) => setNewQuestionText(e.target.value)}
+                          className="glass-input"
+                          rows={3}
+                          style={{ width: "100%", resize: "none", fontSize: "0.85rem", padding: "12px", background: "rgba(255,255,255,0.02)" }}
+                          maxLength={300}
+                          required
+                        />
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
+                            {300 - newQuestionText.length} characters remaining
+                          </span>
+                          <button
+                            type="submit"
+                            disabled={submittingQuestion || !newQuestionText.trim()}
+                            className="btn-primary"
+                            style={{ padding: "8px 24px", fontSize: "0.8rem", fontWeight: "600" }}
+                          >
+                            {submittingQuestion ? "Sending..." : "Send Backstage"}
+                          </button>
+                        </div>
+                      </form>
+
+                      {/* Question History */}
+                      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                        <span style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: "700", letterSpacing: "1px" }}>
+                          Sent Mail ({fanQuestions.length})
+                        </span>
+                        
+                        {fanQuestions.length > 0 ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: "12px", maxHeight: "300px", overflowY: "auto", paddingRight: "4px" }}>
+                            {fanQuestions.map((q) => (
+                              <div 
+                                key={q.id} 
+                                className="glass-panel" 
+                                style={{ 
+                                  padding: "16px", 
+                                  border: q.status === "answered" ? "1px solid rgba(212, 175, 55, 0.25)" : "1px solid rgba(255, 255, 255, 0.05)",
+                                  background: q.status === "answered" ? "rgba(212, 175, 55, 0.03)" : "rgba(255, 255, 255, 0.01)",
+                                  borderRadius: "12px"
+                                }}
+                              >
+                                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "8px" }}>
+                                  <span style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>{q.timestamp}</span>
+                                  {q.status === "answered" ? (
+                                    <span style={{ fontSize: "0.68rem", color: "var(--accent-gold)", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                                      💬 Answered
+                                    </span>
+                                  ) : (
+                                    <span style={{ fontSize: "0.68rem", color: "#a855f7", fontWeight: "700", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                                      ⏳ Pending Review
+                                    </span>
+                                  )}
+                                </div>
+                                <p style={{ fontSize: "0.85rem", color: "var(--text-primary)", margin: 0 }}>
+                                  “{q.questionText}”
+                                </p>
+                                
+                                {q.status === "answered" && q.reply && (
+                                  <div style={{ 
+                                    marginTop: "12px", 
+                                    paddingTop: "12px", 
+                                    borderTop: "1px solid rgba(212, 175, 55, 0.15)",
+                                    color: "var(--text-primary)"
+                                  }}>
+                                    <span style={{ fontSize: "0.7rem", fontWeight: "700", textTransform: "uppercase", color: "var(--accent-gold)", display: "block", marginBottom: "4px" }}>
+                                      Artist Reply:
+                                    </span>
+                                    <p style={{ fontSize: "0.82rem", fontStyle: "italic", margin: 0, color: "var(--accent-gold-hover)" }}>
+                                      {q.reply}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: 0, fontStyle: "italic" }}>
+                            No questions sent yet. Ask something to the artist!
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
