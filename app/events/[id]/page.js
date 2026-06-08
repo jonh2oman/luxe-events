@@ -37,6 +37,25 @@ function EventDetail() {
   const [splitPayment, setSplitPayment] = useState(false);
   const [splitLink, setSplitLink] = useState("");
   const [presenceMap, setPresenceMap] = useState({});
+  const [promoCodeInput, setPromoCodeInput] = useState("");
+  const [appliedPromo, setAppliedPromo] = useState(null);
+  const [promoError, setPromoError] = useState("");
+  const [promoSuccess, setPromoSuccess] = useState("");
+
+  const handleApplyPromo = async () => {
+    setPromoError("");
+    setPromoSuccess("");
+    if (!promoCodeInput.trim()) return;
+
+    const promo = await database.validatePromoCode(promoCodeInput);
+    if (promo) {
+      setAppliedPromo(promo);
+      setPromoSuccess(`Code ${promo.code} applied! Discount: ${promo.type === 'percent' ? promo.discount + '%' : '$' + promo.discount}`);
+    } else {
+      setAppliedPromo(null);
+      setPromoError("Invalid promotional code.");
+    }
+  };
 
   // Compute a stable session username if not authenticated
   const getSessionUser = () => {
@@ -142,8 +161,17 @@ function EventDetail() {
     }
   };
 
-  // Calculate total price
-  const totalPrice = selectedSeats.reduce((acc, seat) => acc + seat.price, 0);
+  // Calculate total price with optional promo code discount
+  const basePrice = selectedSeats.reduce((acc, seat) => acc + seat.price, 0);
+  let discountAmount = 0;
+  if (appliedPromo) {
+    if (appliedPromo.type === "percent") {
+      discountAmount = (basePrice * appliedPromo.discount) / 100;
+    } else {
+      discountAmount = appliedPromo.discount;
+    }
+  }
+  const totalPrice = Math.max(0, basePrice - discountAmount);
 
   // Run checkout booking
   const handleBooking = async () => {
@@ -152,6 +180,9 @@ function EventDetail() {
 
     try {
       const seatIds = selectedSeats.map(s => s.id);
+      const checkoutPrice = splitPayment 
+        ? (selectedSeats[0].price * (totalPrice / basePrice)) 
+        : totalPrice;
       
       const response = await fetch("/api/checkout", {
         method: "POST",
@@ -160,7 +191,7 @@ function EventDetail() {
           eventId: event.id,
           eventTitle: event.title,
           seats: splitPayment ? [seatIds[0]] : seatIds, // Checkout first seat if splitting
-          totalPrice: splitPayment ? selectedSeats[0].price : totalPrice
+          totalPrice: checkoutPrice
         })
       });
 
@@ -169,18 +200,18 @@ function EventDetail() {
       if (data.success && data.sessionUrl) {
         // Book seats in local database (Sandbox simulation)
         if (!data.live) {
-          if (splitPayment) {
-            // Book first seat
-            const booking = await database.bookSeats(event.id, [seatIds[0]]);
-            // Lock other seats for friends
-            await database.holdSeats(event.id, seatIds.slice(1), "Split Group Hold");
-            
-            // Set group link
-            const url = window.location.origin + `/events/${event.id}?splitGroupId=${booking.id}&seats=${seatIds.slice(1).join(",")}`;
-            setSplitLink(url);
-          } else {
-            await database.bookSeats(event.id, seatIds);
-          }
+            if (splitPayment) {
+              // Book first seat
+              const booking = await database.bookSeats(event.id, [seatIds[0]], appliedPromo?.code);
+              // Lock other seats for friends
+              await database.holdSeats(event.id, seatIds.slice(1), "Split Group Hold");
+              
+              // Set group link
+              const url = window.location.origin + `/events/${event.id}?splitGroupId=${booking.id}&seats=${seatIds.slice(1).join(",")}`;
+              setSplitLink(url);
+            } else {
+              await database.bookSeats(event.id, seatIds, appliedPromo?.code);
+            }
         }
 
         setIsBooking(false);
@@ -638,6 +669,36 @@ function EventDetail() {
                     </div>
                   )}
 
+                  {/* Promo Code Input */}
+                  <div style={{
+                    marginBottom: "24px",
+                    padding: "16px",
+                    borderRadius: "12px",
+                    background: "rgba(255, 255, 255, 0.01)",
+                    border: "1px solid rgba(255, 255, 255, 0.05)"
+                  }}>
+                    <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", display: "block", marginBottom: "8px" }}>Have a Promo Code?</label>
+                    <div style={{ display: "flex", gap: "10px" }}>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. VIP20" 
+                        value={promoCodeInput}
+                        onChange={(e) => setPromoCodeInput(e.target.value)}
+                        className="glass-input"
+                        style={{ flex: 1, padding: "8px 12px", fontSize: "0.85rem", textTransform: "uppercase" }}
+                      />
+                      <button 
+                        onClick={handleApplyPromo}
+                        className="btn-secondary"
+                        style={{ padding: "8px 16px", fontSize: "0.85rem" }}
+                      >
+                        Apply
+                      </button>
+                    </div>
+                    {promoError && <p style={{ color: "#ef4444", fontSize: "0.75rem", marginTop: "6px", marginBottom: 0 }}>{promoError}</p>}
+                    {promoSuccess && <p style={{ color: "#10b981", fontSize: "0.75rem", marginTop: "6px", marginBottom: 0 }}>{promoSuccess}</p>}
+                  </div>
+
                   {/* Summary & Buttons */}
                   <div style={{
                     borderTop: "1px solid rgba(255, 255, 255, 0.08)",
@@ -648,6 +709,11 @@ function EventDetail() {
                     marginBottom: "24px"
                   }}>
                     <div>
+                      {appliedPromo && (
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", textDecoration: "line-through" }}>
+                          Original: ${basePrice}
+                        </span>
+                      )}
                       <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block" }}>Total Amount</span>
                       <span style={{ fontSize: "1.5rem", fontWeight: "700", color: "var(--text-primary)" }}>${totalPrice}</span>
                     </div>

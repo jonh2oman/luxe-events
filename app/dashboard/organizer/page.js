@@ -3,7 +3,11 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Sparkles, Calendar, Plus, DollarSign, Users, Award, TrendingUp, Cpu, CheckCircle, Camera } from "lucide-react";
+import { 
+  Sparkles, Calendar, Plus, DollarSign, Users, Award, TrendingUp, Cpu, 
+  CheckCircle, Camera, Tag, ClipboardList, Layout, QrCode, Bell, CreditCard, 
+  ArrowRight, ShieldCheck, ArrowUpRight 
+} from "lucide-react";
 import { database } from "@/lib/database";
 
 export default function OrganizerDashboard() {
@@ -11,6 +15,12 @@ export default function OrganizerDashboard() {
   const [events, setEvents] = useState([]);
   const [layoutTemplates, setLayoutTemplates] = useState([]);
   const [selectedTemplateName, setSelectedTemplateName] = useState("");
+  
+  // Dashboard operational states
+  const [bookings, setBookings] = useState([]);
+  const [promoCodes, setPromoCodes] = useState([]);
+  const [plannerTasks, setPlannerTasks] = useState([]);
+  const [vipNotification, setVipNotification] = useState(null);
   
   // AI assist state
   const [prompt, setPrompt] = useState("");
@@ -32,6 +42,15 @@ export default function OrganizerDashboard() {
     setAnalytics(database.getOrganizerAnalytics());
     database.getEvents().then(allEvents => {
       setEvents(allEvents);
+    });
+    database.getBookings().then(allBookings => {
+      setBookings(allBookings);
+    });
+    database.getPromoCodes().then(allCodes => {
+      setPromoCodes(allCodes);
+    });
+    database.getPlannerTasks().then(allTasks => {
+      setPlannerTasks(allTasks);
     });
 
     // Load custom layouts
@@ -205,6 +224,19 @@ export default function OrganizerDashboard() {
 
   if (!analytics) return null;
 
+  const totalBookedSeats = bookings.reduce((acc, b) => acc + (b.seats ? b.seats.length : 1), 0);
+  const totalCheckedIn = bookings.filter(b => b.isCheckedIn).reduce((acc, b) => acc + (b.seats ? b.seats.length : 1), 0);
+  const checkInRate = totalBookedSeats > 0 ? Math.round((totalCheckedIn / totalBookedSeats) * 100) : 0;
+  
+  const completedTasks = plannerTasks.filter(t => t.status === "done").length;
+  const totalTasks = plannerTasks.length;
+  const taskCompletionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  
+  const recentCheckIns = bookings
+    .filter(b => b.isCheckedIn)
+    .slice(-3)
+    .reverse(); // latest first
+
   return (
     <main style={{ padding: "0 24px", maxWidth: "1250px", margin: "0 auto", marginTop: "40px" }}>
       <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "2.4rem", marginBottom: "32px" }}>Organizer Dashboard</h1>
@@ -246,26 +278,146 @@ export default function OrganizerDashboard() {
           </div>
         </div>
 
-        <Link href="/dashboard/organizer/scan" style={{ display: "block" }}>
-          <div className="glass-panel-gold" style={{ 
-            padding: "24px", 
-            display: "flex", 
-            alignItems: "center", 
-            gap: "16px", 
-            height: "100%", 
-            cursor: "pointer", 
-            transition: "transform 0.3s",
-            border: "1px solid rgba(212, 175, 55, 0.2)"
+        <div className="glass-panel" style={{ padding: "24px", display: "flex", alignItems: "center", gap: "16px" }}>
+          <div style={{ background: "rgba(16, 185, 129, 0.1)", padding: "12px", borderRadius: "12px", color: "#10b981" }}>
+            <CreditCard size={24} />
+          </div>
+          <div>
+            <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", display: "block" }}>Stripe Payout (Pending)</span>
+            <span style={{ fontSize: "1.3rem", fontWeight: "700", display: "flex", alignItems: "center", gap: "6px" }}>
+              $4,820.00 <span style={{ fontSize: "0.7rem", color: "#10b981", background: "rgba(16, 185, 129, 0.08)", padding: "2px 6px", borderRadius: "4px" }}>Auto</span>
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* Operations Control Deck Section */}
+      <h2 style={{ fontSize: "1.25rem", fontWeight: "600", marginBottom: "20px", display: "flex", alignItems: "center", gap: "8px" }}>
+        <ShieldCheck size={20} color="var(--accent-gold)" /> Backstage Control Suite
+      </h2>
+      <section style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+        gap: "20px",
+        marginBottom: "40px"
+      }}>
+        {/* CRM */}
+        <Link href="/dashboard/organizer/crm" style={{ display: "block" }}>
+          <div className="glass-panel" style={{ 
+            padding: "20px", 
+            cursor: "pointer",
+            transition: "all 0.3s ease",
+            border: "1px solid rgba(255, 255, 255, 0.05)"
           }}
-               onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-4px)"}
-               onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}>
-            <div style={{ background: "rgba(212, 175, 55, 0.15)", padding: "12px", borderRadius: "12px", color: "var(--accent-gold)" }}>
-              <Camera size={24} />
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-4px)";
+            e.currentTarget.style.borderColor = "var(--accent-gold)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.05)";
+          }}>
+            <div style={{ background: "rgba(168, 85, 247, 0.1)", padding: "10px", borderRadius: "10px", color: "#a855f7", width: "max-content", marginBottom: "14px" }}>
+              <Users size={20} />
             </div>
-            <div>
-              <span style={{ fontSize: "0.8rem", color: "var(--accent-gold)", fontWeight: "700", display: "block", textTransform: "uppercase" }}>Scan & Check-in</span>
-              <span style={{ fontSize: "1.1rem", fontWeight: "600", color: "var(--text-primary)" }}>Ticket Verifier</span>
+            <h3 style={{ fontSize: "0.95rem", fontWeight: "600", marginBottom: "4px" }}>Guest CRM</h3>
+            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: "1.3" }}>Search directory, add VIP notes, and dispatch broadcasts.</p>
+          </div>
+        </Link>
+
+        {/* Promo Codes */}
+        <Link href="/dashboard/organizer/promo-codes" style={{ display: "block" }}>
+          <div className="glass-panel" style={{ 
+            padding: "20px", 
+            cursor: "pointer",
+            transition: "all 0.3s ease",
+            border: "1px solid rgba(255, 255, 255, 0.05)"
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-4px)";
+            e.currentTarget.style.borderColor = "var(--accent-gold)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.05)";
+          }}>
+            <div style={{ background: "rgba(16, 185, 129, 0.1)", padding: "10px", borderRadius: "10px", color: "#10b981", width: "max-content", marginBottom: "14px" }}>
+              <Tag size={20} />
             </div>
+            <h3 style={{ fontSize: "0.95rem", fontWeight: "600", marginBottom: "4px" }}>Promo Code Engine</h3>
+            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: "1.3" }}>Generate discount codes, set tiers, track redemption rates.</p>
+          </div>
+        </Link>
+
+        {/* Kanban Board */}
+        <Link href="/dashboard/organizer/planner" style={{ display: "block" }}>
+          <div className="glass-panel" style={{ 
+            padding: "20px", 
+            cursor: "pointer",
+            transition: "all 0.3s ease",
+            border: "1px solid rgba(255, 255, 255, 0.05)"
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-4px)";
+            e.currentTarget.style.borderColor = "var(--accent-gold)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.05)";
+          }}>
+            <div style={{ background: "rgba(14, 165, 233, 0.1)", padding: "10px", borderRadius: "10px", color: "#0ea5e9", width: "max-content", marginBottom: "14px" }}>
+              <ClipboardList size={20} />
+            </div>
+            <h3 style={{ fontSize: "0.95rem", fontWeight: "600", marginBottom: "4px" }}>Backstage Planner</h3>
+            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: "1.3" }}>Kanban checklist for production, catering, and artists.</p>
+          </div>
+        </Link>
+
+        {/* Layout Templates */}
+        <Link href="/dashboard/organizer/design-layout" style={{ display: "block" }}>
+          <div className="glass-panel" style={{ 
+            padding: "20px", 
+            cursor: "pointer",
+            transition: "all 0.3s ease",
+            border: "1px solid rgba(255, 255, 255, 0.05)"
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-4px)";
+            e.currentTarget.style.borderColor = "var(--accent-gold)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.05)";
+          }}>
+            <div style={{ background: "rgba(244, 63, 94, 0.1)", padding: "10px", borderRadius: "10px", color: "#f43f5e", width: "max-content", marginBottom: "14px" }}>
+              <Layout size={20} />
+            </div>
+            <h3 style={{ fontSize: "0.95rem", fontWeight: "600", marginBottom: "4px" }}>Layout Designer</h3>
+            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: "1.3" }}>Configure seating grids, designate corridors and VIP areas.</p>
+          </div>
+        </Link>
+
+        {/* Ticket Scanner */}
+        <Link href="/dashboard/organizer/scan" style={{ display: "block" }}>
+          <div className="glass-panel" style={{ 
+            padding: "20px", 
+            cursor: "pointer",
+            transition: "all 0.3s ease",
+            border: "1px solid rgba(255, 255, 255, 0.05)"
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-4px)";
+            e.currentTarget.style.borderColor = "var(--accent-gold)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.borderColor = "rgba(255, 255, 255, 0.05)";
+          }}>
+            <div style={{ background: "rgba(212, 175, 55, 0.1)", padding: "10px", borderRadius: "10px", color: "var(--accent-gold)", width: "max-content", marginBottom: "14px" }}>
+              <QrCode size={20} />
+            </div>
+            <h3 style={{ fontSize: "0.95rem", fontWeight: "600", marginBottom: "4px" }}>Gate Scanner</h3>
+            <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: "1.3" }}>Open live camera to verify digital QR code tickets at the door.</p>
           </div>
         </Link>
       </section>
@@ -512,10 +664,234 @@ export default function OrganizerDashboard() {
             </form>
           </div>
 
+          {/* Promo Code Campaigns Performance */}
+          <div className="glass-panel" style={{ padding: "32px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <h3 style={{ fontSize: "1.1rem", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px", margin: 0 }}>
+                <Tag size={18} color="var(--accent-gold)" /> Promo Code Revenue Impact
+              </h3>
+              <Link href="/dashboard/organizer/promo-codes" style={{ fontSize: "0.75rem", color: "var(--accent-gold)", display: "flex", alignItems: "center", gap: "2px" }} className="nav-link">
+                Manage Codes <ArrowRight size={12} />
+              </Link>
+            </div>
+
+            {promoCodes.length === 0 ? (
+              <div style={{ padding: "20px 0", textAlign: "center", color: "var(--text-muted)", fontSize: "0.85rem" }}>
+                No active promo codes to track.
+              </div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem", textAlign: "left" }}>
+                  <thead>
+                    <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", color: "var(--text-muted)" }}>
+                      <th style={{ padding: "10px 8px", fontWeight: "600" }}>Code</th>
+                      <th style={{ padding: "10px 8px", fontWeight: "600" }}>Discount</th>
+                      <th style={{ padding: "10px 8px", fontWeight: "600", textAlign: "center" }}>Uses</th>
+                      <th style={{ padding: "10px 8px", fontWeight: "600", textAlign: "right" }}>Attributed Sales</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {promoCodes.map((code) => {
+                      const matchingBookings = bookings.filter(b => b.promoCodeUsed === code.code);
+                      const uses = code.usageCount || matchingBookings.length;
+                      const attributedRevenue = matchingBookings.reduce((acc, b) => acc + b.totalPrice, 0) + (uses * 45); // simulated base revenue
+                      
+                      return (
+                        <tr key={code.code} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                          <td style={{ padding: "12px 8px", fontWeight: "700", color: "var(--accent-gold)" }}>{code.code}</td>
+                          <td style={{ padding: "12px 8px", color: "var(--text-secondary)" }}>
+                            {code.type === "percent" ? `${code.discount}% Off` : `$${code.discount} Off`}
+                          </td>
+                          <td style={{ padding: "12px 8px", textAlign: "center" }}>{uses}</td>
+                          <td style={{ padding: "12px 8px", textAlign: "right", fontWeight: "600", color: "var(--text-primary)" }}>
+                            ${attributedRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </section>
 
         {/* Right column: Analytics graphs */}
         <section style={{ display: "flex", flexDirection: "column", gap: "32px" }}>
+          
+          {/* Live Check-In Velocity Speedometer & Guest Ticker */}
+          <div className="glass-panel-gold" style={{ padding: "32px", border: "1px solid rgba(212, 175, 55, 0.2)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <h3 style={{ fontSize: "1.1rem", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px", margin: 0 }}>
+                <QrCode size={18} color="var(--accent-gold)" /> Live Gate Check-In
+              </h3>
+              <span style={{ 
+                fontSize: "0.7rem", 
+                background: "rgba(16, 185, 129, 0.08)", 
+                color: "#10b981", 
+                padding: "4px 10px", 
+                borderRadius: "100px", 
+                fontWeight: "700", 
+                display: "flex", 
+                alignItems: "center", 
+                gap: "6px",
+                border: "1px solid rgba(16, 185, 129, 0.15)"
+              }}>
+                <span className="live-dot" style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#10b981" }}></span> Live Gates Open
+              </span>
+            </div>
+
+            <div style={{ display: "flex", gap: "24px", alignItems: "center", marginBottom: "24px" }}>
+              {/* Circular gauge */}
+              <div style={{ position: "relative", width: "90px", height: "90px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg width="90" height="90" viewBox="0 0 36 36" style={{ transform: "rotate(-90deg)" }}>
+                  <path
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    fill="none"
+                    stroke="rgba(255, 255, 255, 0.03)"
+                    strokeWidth="3"
+                  />
+                  <path
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                    fill="none"
+                    stroke="url(#goldGradient)"
+                    strokeDasharray={`${checkInRate}, 100`}
+                    strokeWidth="3.2"
+                    strokeLinecap="round"
+                  />
+                  <defs>
+                    <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#aa8010" />
+                      <stop offset="100%" stopColor="var(--accent-gold)" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div style={{
+                  position: "absolute",
+                  top: 0, left: 0, right: 0, bottom: 0,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: "1.1rem",
+                  fontWeight: "700",
+                  color: "var(--accent-gold)"
+                }}>
+                  {checkInRate}%
+                </div>
+              </div>
+
+              {/* Counts */}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: "1.4rem", fontWeight: "700", color: "var(--text-primary)" }}>
+                  {totalCheckedIn} <span style={{ fontSize: "0.85rem", color: "var(--text-muted)", fontWeight: "400" }}>/ {totalBookedSeats} Checked In</span>
+                </div>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", display: "block", marginTop: "4px" }}>
+                  Arrivals Rate: {totalCheckedIn > 0 ? (totalCheckedIn * 3.5).toFixed(0) : 0} arrivals/hour
+                </span>
+              </div>
+            </div>
+
+            {/* VIP Ticker / Notifications */}
+            <div style={{ borderTop: "1px dashed rgba(255,255,255,0.06)", paddingTop: "16px" }}>
+              <span style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: "700", display: "block", marginBottom: "10px" }}>
+                Recent Arrivals
+              </span>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {recentCheckIns.length === 0 ? (
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontStyle: "italic" }}>No gate activity recorded yet.</span>
+                ) : (
+                  recentCheckIns.map(b => {
+                    const isVIP = b.notes && (b.notes.toLowerCase().includes("vip") || b.notes.toLowerCase().includes("performer"));
+                    return (
+                      <div 
+                        key={b.id} 
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          padding: "8px 12px",
+                          borderRadius: "8px",
+                          background: isVIP ? "rgba(212, 175, 55, 0.05)" : "rgba(255, 255, 255, 0.01)",
+                          border: isVIP ? "1px solid rgba(212, 175, 55, 0.2)" : "1px solid rgba(255, 255, 255, 0.03)"
+                        }}
+                        className={isVIP ? "vip-glow" : ""}
+                      >
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                          <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: isVIP ? "var(--accent-gold)" : "#10b981" }}></div>
+                          <span style={{ fontSize: "0.85rem", fontWeight: "600", color: isVIP ? "var(--accent-gold)" : "var(--text-primary)" }}>
+                            {b.selectedBy || "Secured Guest"}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                          {isVIP ? "VIP Notes" : "Standard"} • {b.checkInTime}
+                        </span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Backstage Operations Status */}
+          <div className="glass-panel" style={{ padding: "32px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+              <h3 style={{ fontSize: "1.1rem", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px", margin: 0 }}>
+                <ClipboardList size={18} color="var(--accent-gold)" /> Backstage Operations Status
+              </h3>
+              <Link href="/dashboard/organizer/planner" style={{ fontSize: "0.75rem", color: "var(--accent-gold)", display: "flex", alignItems: "center", gap: "2px" }} className="nav-link">
+                Go to Board <ArrowRight size={12} />
+              </Link>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", marginBottom: "6px" }}>
+                  <span style={{ fontWeight: "500" }}>Preparation Checklist Completed</span>
+                  <span style={{ fontWeight: "700", color: "var(--accent-gold)" }}>{completedTasks} / {totalTasks} Tasks ({taskCompletionRate}%)</span>
+                </div>
+                <div style={{
+                  height: "8px",
+                  width: "100%",
+                  background: "rgba(255,255,255,0.02)",
+                  borderRadius: "4px",
+                  overflow: "hidden",
+                  border: "1px solid rgba(255,255,255,0.05)"
+                }}>
+                  <div style={{
+                    width: `${taskCompletionRate}%`,
+                    height: "100%",
+                    background: "linear-gradient(90deg, #aa8010, var(--accent-gold))",
+                    borderRadius: "4px",
+                    transition: "width 0.5s ease"
+                  }}></div>
+                </div>
+              </div>
+
+              {/* Display 3 incomplete tasks */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "4px" }}>
+                {plannerTasks.filter(t => t.status !== "done").slice(0, 3).map(task => (
+                  <div key={task.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderRadius: "8px", background: "rgba(255,255,255,0.01)", border: "1px solid rgba(255,255,255,0.03)" }}>
+                    <span style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>{task.title}</span>
+                    <span style={{
+                      fontSize: "0.65rem",
+                      fontWeight: "600",
+                      padding: "2px 6px",
+                      borderRadius: "4px",
+                      background: task.status === "in_progress" ? "rgba(212,175,55,0.08)" : "rgba(244,63,94,0.08)",
+                      color: task.status === "in_progress" ? "var(--accent-gold)" : "#f43f5e"
+                    }}>
+                      {task.status === "in_progress" ? "Active" : "Todo"}
+                    </span>
+                  </div>
+                ))}
+                {plannerTasks.filter(t => t.status !== "done").length === 0 && (
+                  <span style={{ fontSize: "0.8rem", color: "var(--text-muted)", fontStyle: "italic", textAlign: "center" }}>All backstage items completed!</span>
+                )}
+              </div>
+            </div>
+          </div>
           
           {/* Sales velocity mock graph */}
           <div className="glass-panel" style={{ padding: "32px" }}>
@@ -631,6 +1007,22 @@ export default function OrganizerDashboard() {
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
+        }
+        .live-dot {
+          animation: ping-pulse 1.5s infinite;
+        }
+        @keyframes ping-pulse {
+          0% { opacity: 0.3; transform: scale(0.9); }
+          50% { opacity: 1; transform: scale(1.1); }
+          100% { opacity: 0.3; transform: scale(0.9); }
+        }
+        .vip-glow {
+          box-shadow: 0 0 10px rgba(212, 175, 55, 0.15);
+          animation: vip-glow-pulse 2s infinite alternate;
+        }
+        @keyframes vip-glow-pulse {
+          0% { border-color: rgba(212, 175, 55, 0.15); }
+          100% { border-color: rgba(212, 175, 55, 0.4); }
         }
       `}</style>
     </main>
