@@ -236,6 +236,14 @@ export default function AttendeeDashboard() {
     return () => channel.close();
   }, [selectedBooking]);
 
+  useEffect(() => {
+    if (lightingMode) {
+      document.documentElement.setAttribute("data-atmosphere", lightingMode);
+    } else {
+      document.documentElement.removeAttribute("data-atmosphere");
+    }
+  }, [lightingMode]);
+
   // Handle sending chat message
   const handleSendMessage = async (e) => {
     e.preventDefault();

@@ -32,19 +32,28 @@ export default function Navbar() {
           const stored = localStorage.getItem(`luxe_lighting_${bookings[0].eventId}`);
           if (stored) {
             setLightingMode(stored);
+          } else {
+            const globalStored = localStorage.getItem("luxe_global_atmosphere") || "laser_sweep";
+            setLightingMode(globalStored);
           }
         } else {
           setActiveBooking(null);
+          const globalStored = localStorage.getItem("luxe_global_atmosphere") || "laser_sweep";
+          setLightingMode(globalStored);
         }
       });
     } else {
       setActiveBooking(null);
+      const globalStored = localStorage.getItem("luxe_global_atmosphere") || "laser_sweep";
+      setLightingMode(globalStored);
     }
   }, [user]);
 
   useEffect(() => {
-    if (!activeBooking) return;
-    const channel = new BroadcastChannel(`luxe_lighting_${activeBooking.eventId}`);
+    const channelName = activeBooking
+      ? `luxe_lighting_${activeBooking.eventId}`
+      : "luxe_global_atmosphere";
+    const channel = new BroadcastChannel(channelName);
     channel.onmessage = (event) => {
       if (event.data && event.data.type === "LIGHTING_CHANGE") {
         setLightingMode(event.data.mode);
@@ -53,14 +62,27 @@ export default function Navbar() {
     return () => channel.close();
   }, [activeBooking]);
 
+  useEffect(() => {
+    if (lightingMode) {
+      document.documentElement.setAttribute("data-atmosphere", lightingMode);
+    } else {
+      document.documentElement.removeAttribute("data-atmosphere");
+    }
+  }, [lightingMode]);
+
   const changeLightingMode = (mode) => {
-    if (!activeBooking) return;
     setLightingMode(mode);
-    localStorage.setItem(`luxe_lighting_${activeBooking.eventId}`, mode);
-    
-    const channel = new BroadcastChannel(`luxe_lighting_${activeBooking.eventId}`);
-    channel.postMessage({ type: "LIGHTING_CHANGE", mode });
-    channel.close();
+    if (activeBooking) {
+      localStorage.setItem(`luxe_lighting_${activeBooking.eventId}`, mode);
+      const channel = new BroadcastChannel(`luxe_lighting_${activeBooking.eventId}`);
+      channel.postMessage({ type: "LIGHTING_CHANGE", mode });
+      channel.close();
+    } else {
+      localStorage.setItem("luxe_global_atmosphere", mode);
+      const channel = new BroadcastChannel("luxe_global_atmosphere");
+      channel.postMessage({ type: "LIGHTING_CHANGE", mode });
+      channel.close();
+    }
   };
 
   const handleAuthSubmit = async (e) => {
@@ -211,7 +233,7 @@ export default function Navbar() {
               </Link>
 
               {/* Collaborative Lighting Controller (Floating menu) */}
-              {activeBooking && (
+              {user && (
                 <div style={{ position: "relative" }}>
                   <button
                     onClick={() => setShowLightingMenu(!showLightingMenu)}

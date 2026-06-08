@@ -305,3 +305,139 @@ html[data-theme="gold"] .glass-input:focus {
   background: rgba(245, 158, 11, 0.06) !important;
   border-color: var(--accent-gold) !important;
 }
+
+/* --- Atmosphere Theme Integration --- */
+
+/* Base Atmosphere Variable Declarations */
+html[data-atmosphere="laser_sweep"] {
+  --atmosphere-color: #a855f7;
+  --atmosphere-glow: rgba(168, 85, 247, 0.35);
+  --glass-border: rgba(168, 85, 247, 0.15);
+  --border-accent: rgba(168, 85, 247, 0.12);
+}
+html[data-atmosphere="golden_nebula"] {
+  --atmosphere-color: #d4af37;
+  --atmosphere-glow: rgba(212, 175, 55, 0.35);
+  --glass-border: rgba(212, 175, 55, 0.15);
+  --border-accent: rgba(212, 175, 55, 0.12);
+}
+html[data-atmosphere="neon_pulse"] {
+  --atmosphere-color: #ec4899;
+  --atmosphere-glow: rgba(236, 72, 153, 0.35);
+  --glass-border: rgba(236, 72, 153, 0.15);
+  --border-accent: rgba(236, 72, 153, 0.12);
+}
+html[data-atmosphere="deep_ocean"] {
+  --atmosphere-color: #0d9488;
+  --atmosphere-glow: rgba(13, 148, 136, 0.35);
+  --glass-border: rgba(13, 148, 136, 0.15);
+  --border-accent: rgba(13, 148, 136, 0.12);
+}
+
+/* Light Theme overrides for Atmospheres */
+html[data-theme="light"][data-atmosphere="laser_sweep"] {
+  --atmosphere-color: #7e22ce;
+  --atmosphere-glow: rgba(126, 34, 206, 0.15);
+  --glass-border: rgba(126, 34, 206, 0.15);
+  --border-accent: rgba(126, 34, 206, 0.1);
+}
+html[data-theme="light"][data-atmosphere="golden_nebula"] {
+  --atmosphere-color: #b45309;
+  --atmosphere-glow: rgba(180, 83, 9, 0.15);
+  --glass-border: rgba(180, 83, 9, 0.15);
+  --border-accent: rgba(180, 83, 9, 0.1);
+}
+html[data-theme="light"][data-atmosphere="neon_pulse"] {
+  --atmosphere-color: #be185d;
+  --atmosphere-glow: rgba(190, 24, 93, 0.15);
+  --glass-border: rgba(190, 24, 93, 0.15);
+  --border-accent: rgba(190, 24, 93, 0.1);
+}
+html[data-theme="light"][data-atmosphere="deep_ocean"] {
+  --atmosphere-color: #0f766e;
+  --atmosphere-glow: rgba(15, 118, 110, 0.15);
+  --glass-border: rgba(15, 118, 110, 0.15);
+  --border-accent: rgba(15, 118, 110, 0.1);
+}
+
+/* Gold Theme overrides for Atmospheres */
+html[data-theme="gold"][data-atmosphere="laser_sweep"] {
+  --atmosphere-color: #d946ef;
+  --atmosphere-glow: rgba(217, 70, 239, 0.2);
+  --glass-border: rgba(217, 70, 239, 0.18);
+  --border-accent: rgba(217, 70, 239, 0.12);
+}
+html[data-theme="gold"][data-atmosphere="golden_nebula"] {
+  --atmosphere-color: #f59e0b;
+  --atmosphere-glow: rgba(245, 158, 11, 0.25);
+  --glass-border: rgba(245, 158, 11, 0.2);
+  --border-accent: rgba(245, 158, 11, 0.15);
+}
+html[data-theme="gold"][data-atmosphere="neon_pulse"] {
+  --atmosphere-color: #f43f5e;
+  --atmosphere-glow: rgba(244, 63, 94, 0.22);
+  --glass-border: rgba(244, 63, 94, 0.18);
+  --border-accent: rgba(244, 63, 94, 0.12);
+}
+html[data-theme="gold"][data-atmosphere="deep_ocean"] {
+  --atmosphere-color: #14b8a6;
+  --atmosphere-glow: rgba(20, 184, 166, 0.2);
+  --glass-border: rgba(20, 184, 166, 0.18);
+  --border-accent: rgba(20, 184, 166, 0.12);
+}
+
+/* --- Global Background Shifting --- */
+
+/* Default / Dark Theme background gradients */
+html[data-atmosphere="laser_sweep"] body {
+  background: radial-gradient(circle at 50% -20%, #3b0764 0%, var(--bg-primary) 70%) !important;
+}
+html[data-atmosphere="golden_nebula"] body {
+  background: radial-gradient(circle at 50% -20%, #451a03 0%, var(--bg-primary) 70%) !important;
+}
+html[data-atmosphere="neon_pulse"] body {
+  background: radial-gradient(circle at 50% -20%, #50072b 0%, var(--bg-primary) 70%) !important;
+}
+html[data-atmosphere="deep_ocean"] body {
+  background: radial-gradient(circle at 50% -20%, #042f2e 0%, var(--bg-primary) 70%) !important;
+}
+
+/* Gold Theme background gradients */
+html[data-theme="gold"][data-atmosphere="laser_sweep"] body {
+  background: radial-gradient(circle at 50% -20%, #3b0764 0%, #150f03 70%) !important;
+}
+html[data-theme="gold"][data-atmosphere="golden_nebula"] body {
+  background: radial-gradient(circle at 50% -20%, #451a03 0%, #150f03 70%) !important;
+}
+html[data-theme="gold"][data-atmosphere="neon_pulse"] body {
+  background: radial-gradient(circle at 50% -20%, #50072b 0%, #150f03 70%) !important;
+}
+html[data-theme="gold"][data-atmosphere="deep_ocean"] body {
+  background: radial-gradient(circle at 50% -20%, #042f2e 0%, #150f03 70%) !important;
+}
+
+/* Light Theme background gradients */
+html[data-theme="light"][data-atmosphere="laser_sweep"] body {
+  background: radial-gradient(circle at 50% -20%, #f3e8ff 0%, #f8fafc 70%) !important;
+}
+html[data-theme="light"][data-atmosphere="golden_nebula"] body {
+  background: radial-gradient(circle at 50% -20%, #fef3c7 0%, #f8fafc 70%) !important;
+}
+html[data-theme="light"][data-atmosphere="neon_pulse"] body {
+  background: radial-gradient(circle at 50% -20%, #fce7f3 0%, #f8fafc 70%) !important;
+}
+html[data-theme="light"][data-atmosphere="deep_ocean"] body {
+  background: radial-gradient(circle at 50% -20%, #ccfbf1 0%, #f8fafc 70%) !important;
+}
+
+/* Dynamic styling overrides for glow accents */
+html[data-atmosphere] .btn-secondary:hover {
+  border-color: var(--atmosphere-color) !important;
+  color: var(--atmosphere-color) !important;
+  box-shadow: 0 0 15px var(--atmosphere-glow) !important;
+}
+
+html[data-atmosphere] .glass-input:focus {
+  border-color: var(--atmosphere-color) !important;
+  box-shadow: 0 0 15px var(--atmosphere-glow) !important;
+}
