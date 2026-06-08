@@ -16,6 +16,7 @@ export default function SettingsPage() {
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [nameInput, setNameInput] = useState("");
+  const [roleInput, setRoleInput] = useState("client");
   const [isRegister, setIsRegister] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authSubmitting, setAuthSubmitting] = useState(false);
@@ -61,7 +62,7 @@ export default function SettingsPage() {
     try {
       if (isRegister) {
         if (!nameInput.trim()) throw new Error("Name is required");
-        await signUp(nameInput, emailInput, passwordInput);
+        await signUp(nameInput, emailInput, passwordInput, roleInput);
       } else {
         await login(emailInput, passwordInput);
       }
@@ -116,17 +117,66 @@ export default function SettingsPage() {
 
           <form onSubmit={handleAuthSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             {isRegister && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Username</label>
-                <input 
-                  type="text" 
-                  required 
-                  placeholder="Julian Sterling" 
-                  value={nameInput}
-                  onChange={(e) => setNameInput(e.target.value)}
-                  className="glass-input" 
-                />
-              </div>
+              <>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "8px" }}>
+                  <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Account Type</label>
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "8px",
+                    background: "rgba(255, 255, 255, 0.03)",
+                    padding: "4px",
+                    borderRadius: "12px",
+                    border: "1px solid rgba(255, 255, 255, 0.05)"
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => setRoleInput("client")}
+                      style={{
+                        background: roleInput === "client" ? "var(--accent-gold)" : "transparent",
+                        color: roleInput === "client" ? "#000" : "var(--text-secondary)",
+                        border: "none",
+                        padding: "8px",
+                        borderRadius: "8px",
+                        fontWeight: "600",
+                        fontSize: "0.8rem",
+                        cursor: "pointer",
+                        transition: "all 0.2s"
+                      }}
+                    >
+                      Client / Attendee
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRoleInput("organizer")}
+                      style={{
+                        background: roleInput === "organizer" ? "var(--accent-gold)" : "transparent",
+                        color: roleInput === "organizer" ? "#000" : "var(--text-secondary)",
+                        border: "none",
+                        padding: "8px",
+                        borderRadius: "8px",
+                        fontWeight: "600",
+                        fontSize: "0.8rem",
+                        cursor: "pointer",
+                        transition: "all 0.2s"
+                      }}
+                    >
+                      Event Organizer
+                    </button>
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Username</label>
+                  <input 
+                    type="text" 
+                    required 
+                    placeholder="Julian Sterling" 
+                    value={nameInput}
+                    onChange={(e) => setNameInput(e.target.value)}
+                    className="glass-input" 
+                  />
+                </div>
+              </>
             )}
             
             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>

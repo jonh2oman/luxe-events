@@ -15,6 +15,7 @@ export default function Navbar() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
+  const [role, setRole] = useState("client"); // 'client' | 'organizer'
   const [error, setError] = useState("");
   const [authLoading, setAuthLoading] = useState(false);
 
@@ -26,7 +27,7 @@ export default function Navbar() {
     try {
       if (isSignUp) {
         if (!name.trim()) throw new Error("Name is required");
-        await signUp(name, email, password);
+        await signUp(name, email, password, role);
       } else {
         await login(email, password);
       }
@@ -35,6 +36,7 @@ export default function Navbar() {
       setEmail("");
       setPassword("");
       setName("");
+      setRole("client");
     } catch (err) {
       setError(err.message || "Authentication failed. Check your inputs.");
     } finally {
@@ -92,22 +94,28 @@ export default function Navbar() {
           }} className="nav-link">
             {database.translate("discover", user?.language)}
           </Link>
-          <Link href="/dashboard/attendee" style={{
-            fontSize: "0.95rem",
-            fontWeight: "500",
-            color: "var(--text-secondary)",
-            transition: "color 0.3s"
-          }} className="nav-link">
-            {database.translate("myTickets", user?.language)}
-          </Link>
-          <Link href="/dashboard/organizer" style={{
-            fontSize: "0.95rem",
-            fontWeight: "500",
-            color: "var(--text-secondary)",
-            transition: "color 0.3s"
-          }} className="nav-link">
-            {database.translate("organizerPanel", user?.language)}
-          </Link>
+          
+          {(!user || user.role === "client") && (
+            <Link href="/dashboard/attendee" style={{
+              fontSize: "0.95rem",
+              fontWeight: "500",
+              color: "var(--text-secondary)",
+              transition: "color 0.3s"
+            }} className="nav-link">
+              {database.translate("myTickets", user?.language)}
+            </Link>
+          )}
+          
+          {(!user || user.role === "organizer") && (
+            <Link href="/dashboard/organizer" style={{
+              fontSize: "0.95rem",
+              fontWeight: "500",
+              color: "var(--text-secondary)",
+              transition: "color 0.3s"
+            }} className="nav-link">
+              {database.translate("organizerPanel", user?.language)}
+            </Link>
+          )}
         </nav>
         
         {/* Auth section */}
@@ -266,17 +274,66 @@ export default function Navbar() {
             {/* Auth Form */}
             <form onSubmit={handleAuthSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {isSignUp && (
-                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                  <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Username</label>
-                  <input 
-                    type="text" 
-                    required 
-                    placeholder="Enter your name" 
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="glass-input" 
-                  />
-                </div>
+                <>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "8px" }}>
+                    <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Account Type</label>
+                    <div style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: "8px",
+                      background: "rgba(255, 255, 255, 0.03)",
+                      padding: "4px",
+                      borderRadius: "12px",
+                      border: "1px solid rgba(255, 255, 255, 0.05)"
+                    }}>
+                      <button
+                        type="button"
+                        onClick={() => setRole("client")}
+                        style={{
+                          background: role === "client" ? "var(--accent-gold)" : "transparent",
+                          color: role === "client" ? "#000" : "var(--text-secondary)",
+                          border: "none",
+                          padding: "8px",
+                          borderRadius: "8px",
+                          fontWeight: "600",
+                          fontSize: "0.8rem",
+                          cursor: "pointer",
+                          transition: "all 0.2s"
+                        }}
+                      >
+                        Client / Attendee
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setRole("organizer")}
+                        style={{
+                          background: role === "organizer" ? "var(--accent-gold)" : "transparent",
+                          color: role === "organizer" ? "#000" : "var(--text-secondary)",
+                          border: "none",
+                          padding: "8px",
+                          borderRadius: "8px",
+                          fontWeight: "600",
+                          fontSize: "0.8rem",
+                          cursor: "pointer",
+                          transition: "all 0.2s"
+                        }}
+                      >
+                        Event Organizer
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Username</label>
+                    <input 
+                      type="text" 
+                      required 
+                      placeholder="Enter your name" 
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="glass-input" 
+                    />
+                  </div>
+                </>
               )}
               
               <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>

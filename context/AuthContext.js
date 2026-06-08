@@ -41,7 +41,7 @@ export function AuthProvider({ children }) {
           uid: "mock-user-123",
           name: "Julian Sterling",
           email: "julian@luxe.design",
-          role: "user",
+          role: "organizer",
           language: "en",
           currency: "CAD",
           theme: "dark",
@@ -58,8 +58,10 @@ export function AuthProvider({ children }) {
 
         if (currentUser) {
           const parsed = JSON.parse(currentUser);
-          // Upgrade profile with default fields if missing
           const upgradedUser = { ...defaultUser, ...parsed };
+          if (upgradedUser.role === "user") {
+            upgradedUser.role = "organizer";
+          }
           localStorage.setItem("luxe_current_user", JSON.stringify(upgradedUser));
           setUser(upgradedUser);
         } else {
@@ -77,35 +79,132 @@ export function AuthProvider({ children }) {
   const login = async (email, password) => {
     if (isRealFirebase && auth) {
       const result = await signInWithEmailAndPassword(auth, email, password);
-      return result.user;
+      const savedUser = localStorage.getItem("luxe_current_user");
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        if (parsed.email === email) {
+          setUser(parsed);
+          return parsed;
+        }
+      }
+      const userObj = {
+        uid: result.user.uid,
+        name: result.user.displayName || email.split("@")[0],
+        email: email,
+        role: email.includes("admin") || email.endsWith("@luxe.admin") ? "organizer" : "client"
+      };
+      localStorage.setItem("luxe_current_user", JSON.stringify(userObj));
+      setUser(userObj);
+      return userObj;
     } else {
       // Mock login
+      if (email === "julian@luxe.design") {
+        const defaultUser = {
+          uid: "mock-user-123",
+          name: "Julian Sterling",
+          email: "julian@luxe.design",
+          role: "organizer",
+          language: "en",
+          currency: "CAD",
+          theme: "dark",
+          subscription: "Pro",
+          billingCycle: "monthly",
+          logo: null,
+          businessName: "Luxe Events Ltd",
+          businessAddress: "120 Pine St, Toronto, ON, Canada",
+          taxId: "GST-881273912-RT0001",
+          website: "https://luxe.design",
+          emailMarketing: true,
+          checkInAlerts: true
+        };
+        localStorage.setItem("luxe_current_user", JSON.stringify(defaultUser));
+        setUser(defaultUser);
+        return defaultUser;
+      }
+
       const mockUser = {
         uid: "mock-user-" + Math.floor(Math.random() * 10000),
         name: email.split("@")[0],
         email: email,
-        role: email.includes("admin") || email.endsWith("@luxe.admin") ? "admin" : "user"
+        role: email.includes("admin") || email.includes("organizer") || email.endsWith("@luxe.admin") ? "organizer" : "client",
+        language: "en",
+        currency: "CAD",
+        theme: "dark"
       };
-      localStorage.setItem("luxe_current_user", JSON.stringify(mockUser));
-      setUser(mockUser);
-      return mockUser;
+      
+      const roleFields = mockUser.role === "organizer" ? {
+        subscription: "Pro",
+        billingCycle: "monthly",
+        logo: null,
+        businessName: `${mockUser.name} Events`,
+        businessAddress: "120 Pine St, Toronto, ON, Canada",
+        taxId: "GST-881273912-RT0001",
+        website: "https://luxe.design",
+        emailMarketing: true,
+        checkInAlerts: true
+      } : {
+        subscription: "Free",
+        billingCycle: "monthly",
+        emailMarketing: true,
+        checkInAlerts: false
+      };
+
+      const finalUser = { ...mockUser, ...roleFields };
+      localStorage.setItem("luxe_current_user", JSON.stringify(finalUser));
+      setUser(finalUser);
+      return finalUser;
     }
   };
 
   // Sign up action
-  const signUp = async (name, email, password) => {
+  const signUp = async (name, email, password, role = "client") => {
     if (isRealFirebase && auth) {
       const result = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(result.user, { displayName: name });
+      const userObj = {
+        uid: result.user.uid,
+        name: name,
+        email: email,
+        role: role
+      };
+      localStorage.setItem("luxe_current_user", JSON.stringify(userObj));
+      setUser(userObj);
       return result.user;
     } else {
       // Mock sign up
-      const mockUser = {
+      const baseUser = {
         uid: "mock-user-" + Math.floor(Math.random() * 10000),
         name,
         email,
-        role: email.includes("admin") || email.endsWith("@luxe.admin") ? "admin" : "user"
+        role: role,
+        language: "en",
+        currency: "CAD",
+        theme: "dark"
       };
+
+      let defaultRoleFields = {};
+      if (role === "organizer") {
+        defaultRoleFields = {
+          subscription: "Pro",
+          billingCycle: "monthly",
+          logo: null,
+          businessName: `${name} Productions`,
+          businessAddress: "100 Gold St, Toronto, ON, Canada",
+          taxId: "GST-999999999-RT0001",
+          website: `https://${name.toLowerCase().replace(/[^a-z0-9]/g, "")}.com`,
+          emailMarketing: true,
+          checkInAlerts: true
+        };
+      } else {
+        defaultRoleFields = {
+          subscription: "Free",
+          billingCycle: "monthly",
+          emailMarketing: true,
+          checkInAlerts: false
+        };
+      }
+
+      const mockUser = { ...baseUser, ...defaultRoleFields };
       localStorage.setItem("luxe_current_user", JSON.stringify(mockUser));
       setUser(mockUser);
       return mockUser;

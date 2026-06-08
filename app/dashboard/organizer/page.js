@@ -18,6 +18,7 @@ export default function OrganizerDashboard() {
   const [emailInput, setEmailInput] = useState("");
   const [passwordInput, setPasswordInput] = useState("");
   const [nameInput, setNameInput] = useState("");
+  const [roleInput, setRoleInput] = useState("organizer");
   const [isRegister, setIsRegister] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authSubmitting, setAuthSubmitting] = useState(false);
@@ -240,7 +241,7 @@ export default function OrganizerDashboard() {
     try {
       if (isRegister) {
         if (!nameInput.trim()) throw new Error("Name is required");
-        await signUp(nameInput, emailInput, passwordInput);
+        await signUp(nameInput, emailInput, passwordInput, roleInput);
       } else {
         await login(emailInput, passwordInput);
       }
@@ -295,17 +296,66 @@ export default function OrganizerDashboard() {
 
           <form onSubmit={handleAuthSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             {isRegister && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-                <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Username</label>
-                <input 
-                  type="text" 
-                  required 
-                  placeholder="Julian Sterling" 
-                  value={nameInput}
-                  onChange={(e) => setNameInput(e.target.value)}
-                  className="glass-input" 
-                />
-              </div>
+              <>
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "8px" }}>
+                  <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Account Type</label>
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "8px",
+                    background: "rgba(255, 255, 255, 0.03)",
+                    padding: "4px",
+                    borderRadius: "12px",
+                    border: "1px solid rgba(255, 255, 255, 0.05)"
+                  }}>
+                    <button
+                      type="button"
+                      onClick={() => setRoleInput("client")}
+                      style={{
+                        background: roleInput === "client" ? "var(--accent-gold)" : "transparent",
+                        color: roleInput === "client" ? "#000" : "var(--text-secondary)",
+                        border: "none",
+                        padding: "8px",
+                        borderRadius: "8px",
+                        fontWeight: "600",
+                        fontSize: "0.8rem",
+                        cursor: "pointer",
+                        transition: "all 0.2s"
+                      }}
+                    >
+                      Client / Attendee
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRoleInput("organizer")}
+                      style={{
+                        background: roleInput === "organizer" ? "var(--accent-gold)" : "transparent",
+                        color: roleInput === "organizer" ? "#000" : "var(--text-secondary)",
+                        border: "none",
+                        padding: "8px",
+                        borderRadius: "8px",
+                        fontWeight: "600",
+                        fontSize: "0.8rem",
+                        cursor: "pointer",
+                        transition: "all 0.2s"
+                      }}
+                    >
+                      Event Organizer
+                    </button>
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Username</label>
+                  <input 
+                    type="text" 
+                    required 
+                    placeholder="Julian Sterling" 
+                    value={nameInput}
+                    onChange={(e) => setNameInput(e.target.value)}
+                    className="glass-input" 
+                  />
+                </div>
+              </>
             )}
             
             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
@@ -362,6 +412,26 @@ export default function OrganizerDashboard() {
               {isRegister ? "Already registered? Sign In" : "Need a premium profile? Register here"}
             </button>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (user && user.role !== "organizer") {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "80vh", padding: "24px" }}>
+        <div className="glass-panel" style={{ width: "100%", maxWidth: "460px", padding: "40px", borderRadius: "24px", border: "1px solid rgba(239, 68, 68, 0.2)", textAlign: "center", boxShadow: "0 20px 50px rgba(0,0,0,0.5)" }}>
+          <div style={{ background: "rgba(239, 68, 68, 0.1)", width: "56px", height: "56px", borderRadius: "50%", display: "flex", justifyContent: "center", alignItems: "center", margin: "0 auto 20px", color: "#ef4444" }}>
+            <ShieldCheck size={28} />
+          </div>
+          <span style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "#ef4444", fontWeight: "700", letterSpacing: "2px" }}>Access Denied</span>
+          <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "1.8rem", fontWeight: "700", marginTop: "8px", marginBottom: "12px" }}>Organizer Account Required</h2>
+          <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", lineHeight: "1.5", marginBottom: "28px", fontWeight: "300" }}>
+            Your current account is registered as a **Client / Attendee**. To access backstage campaigns, layout designers, and support suites, please log in with an organizer account.
+          </p>
+          <Link href="/">
+            <button className="btn-primary" style={{ width: "100%", padding: "12px" }}>Return to Discovery</button>
+          </Link>
         </div>
       </div>
     );
