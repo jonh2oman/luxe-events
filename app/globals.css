@@ -217,3 +217,51 @@ button, input, textarea, select {
     box-shadow: 0 0 8px rgba(212, 175, 55, 0.15);
   }
 }
+
+/* --- Color Theming System --- */
+
+/* Frost White (Light Theme) */
+html[data-theme="light"] {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #f1f5f9;
+  --bg-tertiary: #e2e8f0;
+  
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+  
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(15, 23, 42, 0.08);
+  --glass-border-gold: rgba(212, 175, 55, 0.35);
+  --glass-shadow: 0 12px 40px 0 rgba(15, 23, 42, 0.08);
+}
+
+html[data-theme="light"] body {
+  background: radial-gradient(circle at 50% -20%, #e2e8f0 0%, #f8fafc 70%) !important;
+  color: var(--text-primary) !important;
+}
+
+/* Gold Velvet (Royal Theme) */
+html[data-theme="gold"] {
+  --bg-primary: #150f03;
+  --bg-secondary: #221805;
+  --bg-tertiary: #332408;
+  
+  --text-primary: #fffbeb;
+  --text-secondary: #f59e0b;
+  --text-muted: #b45309;
+  
+  --accent-gold: #f59e0b;
+  --accent-gold-hover: #fbbf24;
+  --accent-gold-glow: rgba(245, 158, 11, 0.45);
+  
+  --glass-bg: rgba(34, 24, 5, 0.75);
+  --glass-border: rgba(245, 158, 11, 0.15);
+  --glass-border-gold: rgba(245, 158, 11, 0.4);
+  --glass-shadow: 0 12px 40px 0 rgba(21, 15, 3, 0.75);
+}
+
+html[data-theme="gold"] body {
+  background: radial-gradient(circle at 50% -20%, #51360a 0%, #150f03 70%) !important;
+  color: var(--text-primary) !important;
+}

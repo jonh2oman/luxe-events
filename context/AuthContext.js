@@ -75,6 +75,12 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // Dynamically apply active theme mode to document root
+  useEffect(() => {
+    const activeTheme = user?.theme || "dark";
+    document.documentElement.setAttribute("data-theme", activeTheme);
+  }, [user]);
+
   // Login action
   const login = async (email, password) => {
     if (isRealFirebase && auth) {
