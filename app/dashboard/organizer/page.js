@@ -49,6 +49,7 @@ export default function OrganizerDashboard() {
   const [formLoc, setFormLoc] = useState("");
   const [formPrice, setFormPrice] = useState(40);
   const [eventAdded, setEventAdded] = useState(false);
+  const [editingEventId, setEditingEventId] = useState(null);
 
   useEffect(() => {
     setAnalytics(database.getOrganizerAnalytics());
@@ -197,40 +198,74 @@ export default function OrganizerDashboard() {
       }));
     }
 
-    const newEvent = await database.createEvent({
-      title: formTitle,
-      subtitle: formSubtitle || "A premium experience host by Luxe.",
-      description: formDesc || "No description provided.",
-      category: "Music",
-      date: formDate,
-      time: formTime || "19:00 - 22:00",
-      location: formLoc,
-      price: parseInt(formPrice),
-      image: "/images/indie_showcase.jpg", // Default placeholder from generated assets
-      organizer: "Luxe Owner",
-      ticketTiers,
-      seats, // Pass custom seats map!
-      cols: activeTemplate ? activeTemplate.cols : 8
-    });
+    if (editingEventId) {
+      const updated = await database.updateEvent(editingEventId, {
+        title: formTitle,
+        subtitle: formSubtitle || "A premium experience host by Luxe.",
+        description: formDesc || "No description provided.",
+        date: formDate,
+        time: formTime || "19:00 - 22:00",
+        location: formLoc,
+        price: parseInt(formPrice),
+        ticketTiers
+      });
 
-    if (newEvent) {
-      setEventAdded(true);
-      const allEvents = await database.getEvents();
-      setEvents(allEvents);
-      
-      // Clear form
-      setFormTitle("");
-      setFormSubtitle("");
-      setFormDesc("");
-      setFormDate("");
-      setFormTime("");
-      setFormLoc("");
-      setFormPrice(40);
-      setAiResponse(null);
+      if (updated) {
+        setEventAdded(true);
+        setEditingEventId(null);
+        const allEvents = await database.getEvents();
+        setEvents(allEvents);
+        
+        // Clear form
+        setFormTitle("");
+        setFormSubtitle("");
+        setFormDesc("");
+        setFormDate("");
+        setFormTime("");
+        setFormLoc("");
+        setFormPrice(40);
+        setAiResponse(null);
 
-      setTimeout(() => {
-        setEventAdded(false);
-      }, 3000);
+        setTimeout(() => {
+          setEventAdded(false);
+        }, 3000);
+      }
+    } else {
+      const newEvent = await database.createEvent({
+        title: formTitle,
+        subtitle: formSubtitle || "A premium experience host by Luxe.",
+        description: formDesc || "No description provided.",
+        category: "Music",
+        date: formDate,
+        time: formTime || "19:00 - 22:00",
+        location: formLoc,
+        price: parseInt(formPrice),
+        image: "/images/indie_showcase.jpg", // Default placeholder from generated assets
+        organizer: "Luxe Owner",
+        ticketTiers,
+        seats, // Pass custom seats map!
+        cols: activeTemplate ? activeTemplate.cols : 8
+      });
+
+      if (newEvent) {
+        setEventAdded(true);
+        const allEvents = await database.getEvents();
+        setEvents(allEvents);
+        
+        // Clear form
+        setFormTitle("");
+        setFormSubtitle("");
+        setFormDesc("");
+        setFormDate("");
+        setFormTime("");
+        setFormLoc("");
+        setFormPrice(40);
+        setAiResponse(null);
+
+        setTimeout(() => {
+          setEventAdded(false);
+        }, 3000);
+      }
     }
   };
 
@@ -854,8 +889,10 @@ export default function OrganizerDashboard() {
           </div>
 
           {/* Event creation form */}
-          <div className="glass-panel" style={{ padding: "32px" }}>
-            <h2 style={{ fontSize: "1.3rem", fontWeight: "600", marginBottom: "24px" }}>Launch New Experience</h2>
+          <div id="experience-form-container" className="glass-panel" style={{ padding: "32px" }}>
+            <h2 style={{ fontSize: "1.3rem", fontWeight: "600", marginBottom: "24px" }}>
+              {editingEventId ? `Edit: ${formTitle}` : "Launch New Experience"}
+            </h2>
             
             {eventAdded && (
               <div style={{
@@ -980,9 +1017,38 @@ export default function OrganizerDashboard() {
                 </select>
               </div>
 
-              <button type="submit" className="btn-primary" style={{ display: "flex", alignItems: "center", gap: "8px", justifyContent: "center", marginTop: "8px" }}>
-                <Plus size={16} /> Publish Experience
-              </button>
+              <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>
+                <button type="submit" className="btn-primary" style={{ flex: 1, display: "flex", alignItems: "center", gap: "8px", justifyContent: "center" }}>
+                  <Plus size={16} /> {editingEventId ? "Update Experience" : "Publish Experience"}
+                </button>
+                {editingEventId && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingEventId(null);
+                      setFormTitle("");
+                      setFormSubtitle("");
+                      setFormDesc("");
+                      setFormDate("");
+                      setFormTime("");
+                      setFormLoc("");
+                      setFormPrice(40);
+                    }}
+                    style={{
+                      background: "rgba(239, 68, 68, 0.1)",
+                      border: "1px solid #ef4444",
+                      color: "#ef4444",
+                      borderRadius: "12px",
+                      padding: "10px 20px",
+                      fontSize: "0.95rem",
+                      fontWeight: "600",
+                      cursor: "pointer"
+                    }}
+                  >
+                    Cancel Edit
+                  </button>
+                )}
+              </div>
             </form>
           </div>
 
@@ -1314,9 +1380,38 @@ export default function OrganizerDashboard() {
                     <span style={{ fontWeight: "600", fontSize: "0.9rem", display: "block" }}>{event.title}</span>
                     <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{event.date}</span>
                   </div>
-                  <span style={{ fontSize: "0.8rem", color: "#10b981", background: "rgba(16, 185, 129, 0.1)", padding: "2px 8px", borderRadius: "10px", fontWeight: "600" }}>
-                    Active
-                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <button
+                      onClick={() => {
+                        setEditingEventId(event.id);
+                        setFormTitle(event.title);
+                        setFormSubtitle(event.subtitle || "");
+                        setFormDesc(event.description || "");
+                        setFormDate(event.date || "");
+                        setFormTime(event.time || "");
+                        setFormLoc(event.location || "");
+                        setFormPrice(event.price || 40);
+                        document.getElementById("experience-form-container")?.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      style={{
+                        background: "rgba(255, 255, 255, 0.03)",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        color: "var(--text-secondary)",
+                        padding: "4px 10px",
+                        borderRadius: "8px",
+                        fontSize: "0.75rem",
+                        fontWeight: "600",
+                        cursor: "pointer",
+                        transition: "all 0.2s"
+                      }}
+                      className="nav-link"
+                    >
+                      Edit
+                    </button>
+                    <span style={{ fontSize: "0.8rem", color: "#10b981", background: "rgba(16, 185, 129, 0.1)", padding: "2px 8px", borderRadius: "10px", fontWeight: "600" }}>
+                      Active
+                    </span>
+                  </div>
                 </div>
               ))}
             </div>
