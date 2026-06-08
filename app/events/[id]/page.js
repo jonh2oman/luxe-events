@@ -36,6 +36,19 @@ function EventDetail() {
   const [bookingSuccess, setBookingSuccess] = useState(false);
   const [splitPayment, setSplitPayment] = useState(false);
   const [splitLink, setSplitLink] = useState("");
+  const [presenceMap, setPresenceMap] = useState({});
+
+  // Compute a stable session username if not authenticated
+  const getSessionUser = () => {
+    if (user?.name) return user.name;
+    if (typeof window === "undefined") return "Guest";
+    let cached = window.sessionStorage.getItem("luxe_anon_user");
+    if (!cached) {
+      cached = "Guest-" + Math.floor(1000 + Math.random() * 9000);
+      window.sessionStorage.setItem("luxe_anon_user", cached);
+    }
+    return cached;
+  };
 
   useEffect(() => {
     database.getEventById(id).then(currentEvent => {
@@ -54,6 +67,38 @@ function EventDetail() {
     });
   }, [id, router, splitSeatsStr]);
 
+  // Subscribe to real-time presence of other attendees
+  useEffect(() => {
+    if (!event) return;
+    const userName = getSessionUser();
+
+    const unsubscribe = database.subscribeToPresence(event.id, userName, (updatedPresence) => {
+      setPresenceMap(updatedPresence);
+    });
+
+    return () => {
+      database.updatePresence(event.id, userName, null, "disconnect");
+      unsubscribe();
+    };
+  }, [event, user]);
+
+  // Handle local hovers
+  const handleMouseEnterSeat = (seatId) => {
+    if (!event) return;
+    const isSelected = selectedSeats.some(s => s.id === seatId);
+    if (isSelected) return; // Maintain selected presence
+    const userName = getSessionUser();
+    database.updatePresence(event.id, userName, seatId, "hover");
+  };
+
+  const handleMouseLeaveSeat = (seatId) => {
+    if (!event) return;
+    const isSelected = selectedSeats.some(s => s.id === seatId);
+    if (isSelected) return;
+    const userName = getSessionUser();
+    database.updatePresence(event.id, userName, seatId, "unhover");
+  };
+
   if (!event) {
     return (
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "80vh" }}>
@@ -67,15 +112,17 @@ function EventDetail() {
     if (seat.isBooked) return;
     
     const isSelected = selectedSeats.some(s => s.id === seat.id);
-    const userName = user?.name || "Anonymous Guest";
+    const userName = getSessionUser();
 
     if (isSelected) {
       setSelectedSeats(selectedSeats.filter(s => s.id !== seat.id));
+      database.updatePresence(event.id, userName, seat.id, "hover");
     } else {
       // Hold the seat in database first
       const held = await database.holdSeats(event.id, [seat.id], userName);
       if (held) {
         setSelectedSeats([...selectedSeats, seat]);
+        database.updatePresence(event.id, userName, seat.id, "select");
       } else {
         alert(`Seat ${seat.id} is temporarily held by another attendee. Please choose a different seat.`);
       }
@@ -360,6 +407,15 @@ function EventDetail() {
                   );
                 }
                 
+                // Find any other users hovering or selecting this seat
+                const myUserName = getSessionUser();
+                const occupants = Object.entries(presenceMap).filter(([u, state]) => 
+                  u !== myUserName && state.seatId === seat.id
+                );
+                
+                const isFriendHovering = occupants.some(([_, state]) => state.action === "hover");
+                const isFriendSelecting = occupants.some(([_, state]) => state.action === "select");
+
                 // Color configuration depending on seat status
                 let seatColor = "rgba(255, 255, 255, 0.04)";
                 let seatBorder = "1px solid rgba(255, 255, 255, 0.1)";
@@ -374,6 +430,14 @@ function EventDetail() {
                 } else if (isSelected) {
                   seatColor = "var(--accent-gold)";
                   seatBorder = "1px solid var(--accent-gold)";
+                } else if (isFriendSelecting) {
+                  seatColor = "rgba(168, 85, 247, 0.15)";
+                  seatBorder = "2px solid #a855f7";
+                  seatShadow = "0 0 12px rgba(168, 85, 247, 0.5)";
+                } else if (isFriendHovering) {
+                  seatColor = "rgba(59, 130, 246, 0.08)";
+                  seatBorder = "2px solid #3b82f6";
+                  seatShadow = "0 0 8px rgba(59, 130, 246, 0.4)";
                 } else if (isGroupSeat) {
                   seatColor = "rgba(168, 85, 247, 0.12)";
                   seatBorder = "2px solid #a855f7";
@@ -382,10 +446,34 @@ function EventDetail() {
                   seatBorder = "1px solid rgba(212, 175, 55, 0.35)"; // VIP seats gold outline
                 }
 
+                // Title tooltip
+                let seatTitle = `${seat.id} (${seat.tier}) - $${seat.price}`;
+                if (isFriendSelecting) {
+                  const selectNames = occupants.filter(([_, s]) => s.action === "select").map(([u]) => u).join(", ");
+                  seatTitle += ` (Held by ${selectNames})`;
+                } else if (isFriendHovering) {
+                  const hoverNames = occupants.filter(([_, s]) => s.action === "hover").map(([u]) => u).join(", ");
+                  seatTitle += ` (Eyeing by ${hoverNames})`;
+                } else if (isGroupSeat && !seat.isBooked) {
+                  seatTitle += ` (Reserved for your group)`;
+                }
+
+                // Determine custom classes
+                let seatClass = "";
+                if (isSelected) {
+                  seatClass = "shimmer-bg";
+                } else if (isFriendSelecting) {
+                  seatClass = "pulse-border";
+                } else if (isGroupSeat && !seat.isBooked) {
+                  seatClass = "pulse-border";
+                }
+
                 return (
                   <button
                     key={seat.id}
                     onClick={() => handleSeatClick(seat)}
+                    onMouseEnter={() => handleMouseEnterSeat(seat.id)}
+                    onMouseLeave={() => handleMouseLeaveSeat(seat.id)}
                     disabled={seat.isBooked}
                     style={{
                       width: "100%",
@@ -404,12 +492,41 @@ function EventDetail() {
                       transition: "all 0.2s ease",
                       position: "relative"
                     }}
-                    title={isGroupSeat && !seat.isBooked ? `Reserved for your group - Seat ${seat.id} (${seat.tier}) - $${seat.price}` : `${seat.id} (${seat.tier}) - $${seat.price}`}
-                    className={isSelected ? "shimmer-bg" : isGroupSeat && !seat.isBooked ? "pulse-border" : ""}
+                    title={seatTitle}
+                    className={seatClass}
                   >
                     {!seat.isBooked && (
                       <span style={{ fontSize: "0.6rem" }}>{seat.id}</span>
                     )}
+
+                    {/* Collaborative User Badges */}
+                    {!seat.isBooked && occupants.map(([u, state]) => {
+                      const initials = u.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2);
+                      const badgeColor = state.action === "select" ? "#a855f7" : "#3b82f6";
+                      return (
+                        <span
+                          key={u}
+                          style={{
+                            position: "absolute",
+                            top: "-6px",
+                            right: "-6px",
+                            background: badgeColor,
+                            color: "#ffffff",
+                            fontSize: "0.5rem",
+                            padding: "1px 3px",
+                            borderRadius: "3px",
+                            fontWeight: "800",
+                            boxShadow: "0 2px 4px rgba(0,0,0,0.5)",
+                            pointerEvents: "none",
+                            zIndex: 10,
+                            border: "1px solid rgba(255,255,255,0.2)"
+                          }}
+                          title={`${u} is ${state.action === "select" ? "holding" : "eyeing"} this seat`}
+                        >
+                          {initials}
+                        </span>
+                      );
+                    })}
                   </button>
                 );
               })}
