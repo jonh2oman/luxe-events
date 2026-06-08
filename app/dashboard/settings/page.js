@@ -9,9 +9,17 @@ import {
 } from "lucide-react";
 
 export default function SettingsPage() {
-  const { user, loading, updateProfileFields } = useAuth();
+  const { user, loading, login, signUp, updateProfileFields } = useAuth();
   const [activeTab, setActiveTab] = useState("profile"); // 'profile' | 'localization' | 'billing' | 'preferences'
   
+  // Auth Gate states
+  const [emailInput, setEmailInput] = useState("");
+  const [passwordInput, setPasswordInput] = useState("");
+  const [nameInput, setNameInput] = useState("");
+  const [isRegister, setIsRegister] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const [authSubmitting, setAuthSubmitting] = useState(false);
+
   // Profile form state
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -46,7 +54,25 @@ export default function SettingsPage() {
     }
   }, [user]);
 
-  if (loading || !user) {
+  const handleAuthSubmit = async (e) => {
+    e.preventDefault();
+    setAuthError("");
+    setAuthSubmitting(true);
+    try {
+      if (isRegister) {
+        if (!nameInput.trim()) throw new Error("Name is required");
+        await signUp(nameInput, emailInput, passwordInput);
+      } else {
+        await login(emailInput, passwordInput);
+      }
+    } catch (err) {
+      setAuthError(err.message || "Authentication failed.");
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
+  if (loading) {
     return (
       <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "80vh", color: "var(--text-primary)" }}>
         <div style={{ textAlign: "center" }}>
@@ -54,6 +80,109 @@ export default function SettingsPage() {
           <p style={{ letterSpacing: "1px", textTransform: "uppercase", fontSize: "0.8rem", color: "var(--text-muted)" }}>
             Loading settings deck...
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div style={{ display: "flex", justifyContent: "center", alignItems: "center", minHeight: "80vh", padding: "24px" }}>
+        <div className="glass-panel-gold" style={{ width: "100%", maxWidth: "440px", padding: "40px", borderRadius: "24px", border: "1px solid rgba(212, 175, 55, 0.25)", boxShadow: "0 20px 50px rgba(0,0,0,0.6)" }}>
+          <div style={{ textAlign: "center", marginBottom: "28px" }}>
+            <span style={{ fontSize: "0.75rem", textTransform: "uppercase", color: "var(--accent-gold)", fontWeight: "700", letterSpacing: "2px" }}>Access Restricted</span>
+            <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "2rem", fontWeight: "700", marginTop: "6px" }}>
+              {isRegister ? "Create Profile" : "Settings Portal"}
+            </h2>
+            <p style={{ color: "var(--text-secondary)", fontSize: "0.85rem", marginTop: "8px", fontWeight: "300" }}>
+              Please sign in to configure your user preferences and billing subscription.
+            </p>
+          </div>
+
+          {authError && (
+            <div style={{
+              background: "rgba(239, 68, 68, 0.1)",
+              border: "1px solid #ef4444",
+              color: "#ef4444",
+              padding: "10px 14px",
+              borderRadius: "8px",
+              fontSize: "0.85rem",
+              marginBottom: "20px",
+              textAlign: "center"
+            }}>
+              {authError}
+            </div>
+          )}
+
+          <form onSubmit={handleAuthSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            {isRegister && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Username</label>
+                <input 
+                  type="text" 
+                  required 
+                  placeholder="Julian Sterling" 
+                  value={nameInput}
+                  onChange={(e) => setNameInput(e.target.value)}
+                  className="glass-input" 
+                />
+              </div>
+            )}
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Email Address</label>
+              <input 
+                type="email" 
+                required 
+                placeholder="name@domain.com" 
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
+                className="glass-input" 
+              />
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <label style={{ fontSize: "0.8rem", color: "var(--text-secondary)", fontWeight: "500" }}>Access Key / Password</label>
+              <input 
+                type="password" 
+                required 
+                placeholder="••••••••" 
+                value={passwordInput}
+                onChange={(e) => setPasswordInput(e.target.value)}
+                className="glass-input" 
+              />
+            </div>
+
+            <button 
+              type="submit" 
+              disabled={authSubmitting}
+              className="btn-primary" 
+              style={{
+                padding: "12px",
+                fontWeight: "600",
+                marginTop: "12px",
+                width: "100%"
+              }}
+            >
+              {authSubmitting ? "Authenticating..." : isRegister ? "Register & Enter" : "Unlock Settings"}
+            </button>
+          </form>
+
+          <div style={{ borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "20px", marginTop: "24px", textAlign: "center" }}>
+            <button 
+              onClick={() => { setIsRegister(!isRegister); setAuthError(""); }}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "var(--text-secondary)",
+                fontSize: "0.85rem",
+                cursor: "pointer"
+              }}
+              className="nav-link"
+            >
+              {isRegister ? "Already registered? Sign In" : "Need a premium profile? Register here"}
+            </button>
+          </div>
         </div>
       </div>
     );
