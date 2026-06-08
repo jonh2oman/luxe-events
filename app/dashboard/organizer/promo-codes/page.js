@@ -130,7 +130,7 @@ export default function PromoCodeManager() {
                   style={{ cursor: "pointer", background: "var(--bg-secondary)" }}
                 >
                   <option value="percent">Percent (%)</option>
-                  <option value="flat">Fixed USD ($)</option>
+                  <option value="flat">Fixed CAD ($)</option>
                 </select>
               </div>
             </div>

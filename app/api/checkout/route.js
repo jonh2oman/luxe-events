@@ -33,7 +33,7 @@ export async function POST(request) {
           
           return {
             price_data: {
-              currency: "usd",
+              currency: "cad",
               product_data: {
                 name: `${eventTitle} - Seat ${seatId}`,
                 description: `Reserved seat reservation for ${eventTitle}.`,
