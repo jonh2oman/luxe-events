@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { Calendar, MapPin, Clock, ArrowLeft, ShieldCheck, Armchair, Ticket, Users, Info, Maximize2, Camera, X } from "lucide-react";
+import { Calendar, MapPin, Clock, ArrowLeft, ShieldCheck, Armchair, Ticket, Users, Info, Maximize2, Camera, X, Sparkles } from "lucide-react";
 import Link from "next/link";
 import { database } from "@/lib/database";
 import confetti from "canvas-confetti";
@@ -928,8 +928,8 @@ function EventDetail() {
                   {/* Virtual Seat View Simulator */}
                   {(() => {
                     const lastSeat = selectedSeats[selectedSeats.length - 1];
-                    const seatView = calculateSeatView(lastSeat.id);
-                    if (!seatView) return null;
+                    const seatView = lastSeat ? calculateSeatView(lastSeat.id) : null;
+                    if (!seatView || !lastSeat) return null;
                     return (
                       <div className="glass-panel-gold" style={{
                         padding: "20px",
@@ -947,7 +947,7 @@ function EventDetail() {
                           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                             <Camera size={14} color="var(--accent-gold)" />
                             <span style={{ fontSize: "0.75rem", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px", color: "var(--accent-gold)" }}>
-                              3D View Finder (Seat {lastSeat.id})
+                              3D View Finder (Seat {lastSeat?.id})
                             </span>
                           </div>
                           <button
