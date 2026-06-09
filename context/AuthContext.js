@@ -45,6 +45,7 @@ export function AuthProvider({ children }) {
             email: firebaseUser.email,
             role: role
           });
+          setLoading(false);
 
           // Fetch full database profile
           try {
@@ -70,8 +71,8 @@ export function AuthProvider({ children }) {
           }
         } else {
           setUser(null);
+          setLoading(false);
         }
-        setLoading(false);
       });
       return unsubscribe;
     } else {
