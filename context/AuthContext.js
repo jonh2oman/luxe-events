@@ -19,14 +19,55 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (isRealFirebase && auth) {
       // Listen to real Firebase auth changes
-      const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
         if (firebaseUser) {
+          // Instant load from localStorage if available
+          const savedUser = localStorage.getItem("luxe_current_user");
+          let role = "client";
+          if (savedUser) {
+            try {
+              const parsed = JSON.parse(savedUser);
+              if (parsed.email === firebaseUser.email && parsed.role) {
+                role = parsed.role;
+              }
+            } catch (e) {
+              console.error(e);
+            }
+          } else {
+            if (firebaseUser.email.includes("admin") || firebaseUser.email.includes("organizer") || firebaseUser.email.endsWith("@luxe.admin")) {
+              role = "organizer";
+            }
+          }
+
           setUser({
             uid: firebaseUser.uid,
             name: firebaseUser.displayName || firebaseUser.email.split("@")[0],
             email: firebaseUser.email,
-            role: firebaseUser.email.endsWith("@luxe.admin") ? "admin" : "user"
+            role: role
           });
+
+          // Fetch full database profile
+          try {
+            const { doc, getDoc } = await import("firebase/firestore");
+            const { db } = await import("@/lib/firebase");
+            if (db) {
+              const docSnap = await getDoc(doc(db, "users", firebaseUser.uid));
+              if (docSnap.exists()) {
+                const data = docSnap.data();
+                const mergedUser = {
+                  uid: firebaseUser.uid,
+                  name: data.name || firebaseUser.displayName || firebaseUser.email.split("@")[0],
+                  email: firebaseUser.email,
+                  role: data.role || role,
+                  ...data
+                };
+                setUser(mergedUser);
+                localStorage.setItem("luxe_current_user", JSON.stringify(mergedUser));
+              }
+            }
+          } catch (err) {
+            console.error("Firestore user profile fetch failed:", err);
+          }
         } else {
           setUser(null);
         }
@@ -173,6 +214,18 @@ export function AuthProvider({ children }) {
         email: email,
         role: role
       };
+
+      // Save role/profile to Cloud Firestore
+      try {
+        const { doc, setDoc } = await import("firebase/firestore");
+        const { db } = await import("@/lib/firebase");
+        if (db) {
+          await setDoc(doc(db, "users", result.user.uid), userObj);
+        }
+      } catch (err) {
+        console.error("Firestore user profile save failed:", err);
+      }
+
       localStorage.setItem("luxe_current_user", JSON.stringify(userObj));
       setUser(userObj);
       return result.user;
@@ -234,6 +287,12 @@ export function AuthProvider({ children }) {
       try {
         if (fields.name) {
           await updateProfile(auth.currentUser, { displayName: fields.name });
+        }
+        // Save to Firestore
+        const { doc, setDoc } = await import("firebase/firestore");
+        const { db } = await import("@/lib/firebase");
+        if (db) {
+          await setDoc(doc(db, "users", auth.currentUser.uid), fields, { merge: true });
         }
       } catch (err) {
         console.error("Firebase profile update failed:", err);
