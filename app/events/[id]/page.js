@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Image from "next/image";
-import { Calendar, MapPin, Clock, ArrowLeft, ShieldCheck, Armchair, Ticket, Users, Info } from "lucide-react";
+import { Calendar, MapPin, Clock, ArrowLeft, ShieldCheck, Armchair, Ticket, Users, Info, Maximize2, Camera, X } from "lucide-react";
 import Link from "next/link";
 import { database } from "@/lib/database";
 import confetti from "canvas-confetti";
@@ -43,6 +43,9 @@ function EventDetail() {
   const [promoSuccess, setPromoSuccess] = useState("");
   const [perspective3D, setPerspective3D] = useState(false);
   const [showPriceBreakdown, setShowPriceBreakdown] = useState(false);
+  const [cameraZoom, setCameraZoom] = useState("1x"); // '0.5x' | '1x' | '3x'
+  const [showFullScreenLens, setShowFullScreenLens] = useState(false);
+  const [hoverViewfinder, setHoverViewfinder] = useState(false);
 
   const calculateSeatView = (seatId) => {
     if (!seatId) return null;
@@ -52,30 +55,45 @@ function EventDetail() {
     let proximity = 100;
     let angle = "Center";
     let viewQuality = "Excellent";
+    let imagePath = "/images/view_center.png";
+    let distance = "12m";
     
     if ("ABC".includes(row)) {
       proximity = 95 + (3 - "ABC".indexOf(row));
       viewQuality = "Unobstructed Direct View";
+      distance = `${10 + "ABC".indexOf(row) * 2}m`;
     } else if ("DEF".includes(row)) {
       proximity = 75 + (3 - "DEF".indexOf(row)) * 5;
       viewQuality = "Perfect Mid-Tier View";
+      distance = `${18 + "DEF".indexOf(row) * 4}m`;
     } else {
       proximity = 55 + (10 - col) * 2;
       viewQuality = "Wide Elevated Panoramic View";
+      distance = `${32 + ("GH".indexOf(row) >= 0 ? "GH".indexOf(row) : 2) * 6}m`;
     }
     
     if (col <= 3) {
       angle = "Left Wing";
+      imagePath = "/images/view_left.png";
     } else if (col >= 8) {
       angle = "Right Wing";
+      imagePath = "/images/view_right.png";
     } else {
-      angle = "Premium Center Stage";
+      if ("ABC".includes(row)) {
+        angle = "Premium Center Stage";
+        imagePath = "/images/view_center.png";
+      } else {
+        angle = "Elevated Center Stage";
+        imagePath = "/images/view_rear.png";
+      }
     }
     
     return {
       proximity,
       angle,
       viewQuality,
+      imagePath,
+      distance,
       description: `${angle} - ${proximity}% Stage Proximity. ${viewQuality}.`
     };
   };
@@ -921,64 +939,162 @@ function EventDetail() {
                         border: "1px solid rgba(212, 175, 55, 0.2)",
                         display: "flex",
                         flexDirection: "column",
-                        gap: "10px",
+                        gap: "12px",
                         overflow: "hidden",
                         position: "relative"
                       }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <Armchair size={14} color="var(--accent-gold)" />
-                          <span style={{ fontSize: "0.75rem", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px", color: "var(--accent-gold)" }}>
-                            Virtual Stage View Simulator (Seat {lastSeat.id})
-                          </span>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                            <Camera size={14} color="var(--accent-gold)" />
+                            <span style={{ fontSize: "0.75rem", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px", color: "var(--accent-gold)" }}>
+                              3D View Finder (Seat {lastSeat.id})
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => setShowFullScreenLens(true)}
+                            style={{
+                              background: "transparent",
+                              border: "none",
+                              color: "var(--text-secondary)",
+                              cursor: "pointer",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
+                              fontSize: "0.75rem"
+                            }}
+                            className="nav-link"
+                          >
+                            <Maximize2 size={12} />
+                            <span>Full Screen</span>
+                          </button>
                         </div>
 
-                        <div style={{
-                          height: "90px",
-                          background: "#020205",
-                          borderRadius: "8px",
-                          border: "1px solid rgba(255,255,255,0.05)",
-                          display: "flex",
-                          flexDirection: "column",
-                          justifyContent: "center",
-                          alignItems: "center",
-                          position: "relative",
-                          overflow: "hidden"
-                        }}>
+                        {/* Interactive Lens Viewport */}
+                        <div 
+                          onClick={() => setShowFullScreenLens(true)}
+                          onMouseEnter={() => setHoverViewfinder(true)}
+                          onMouseLeave={() => setHoverViewfinder(false)}
+                          style={{
+                            height: "150px",
+                            background: "#020205",
+                            borderRadius: "8px",
+                            border: hoverViewfinder ? "1px solid var(--accent-gold)" : "1px solid rgba(255,255,255,0.05)",
+                            position: "relative",
+                            overflow: "hidden",
+                            cursor: "pointer",
+                            boxShadow: hoverViewfinder ? "0 0 15px rgba(212, 175, 55, 0.15), inset 0 0 20px rgba(0,0,0,0.8)" : "inset 0 0 20px rgba(0,0,0,0.8)",
+                            transition: "all 0.3s"
+                          }}
+                        >
+                          {/* Perspective Image with Zoom Transform */}
                           <div style={{
-                            width: "70px",
-                            height: "14px",
-                            background: "linear-gradient(to right, #d4af37, #a855f7)",
-                            borderRadius: "10px 10px 0 0",
-                            boxShadow: "0 0 15px rgba(212, 175, 55, 0.6)",
-                            marginBottom: "12px",
-                            transform: `scale(${seatView.proximity / 100})`,
-                            transition: "transform 0.4s"
-                          }} />
+                            width: "100%",
+                            height: "100%",
+                            position: "relative",
+                            transform: cameraZoom === "0.5x" ? "scale(0.85)" : cameraZoom === "3x" ? "scale(1.7)" : "scale(1.1)",
+                            transition: "transform 0.45s cubic-bezier(0.25, 1, 0.5, 1)",
+                            display: "flex",
+                            justifyContent: "center",
+                            alignItems: "center"
+                          }}>
+                            <img 
+                              src={seatView.imagePath} 
+                              alt="Stage View" 
+                              style={{ width: "100%", height: "100%", objectFit: "cover", opacity: 0.8 }} 
+                            />
+                          </div>
 
+                          {/* Faint HUD overlay (pointer-events: none) */}
                           <div style={{
                             position: "absolute",
-                            bottom: "20px",
-                            width: "100%",
-                            height: "40px",
-                            background: "radial-gradient(ellipse at bottom, rgba(212, 175, 55, 0.15) 0%, transparent 70%)",
-                            pointerEvents: "none"
-                          }} />
+                            inset: 0,
+                            pointerEvents: "none",
+                            display: "flex",
+                            flexDirection: "column",
+                            justifyContent: "space-between",
+                            padding: "10px"
+                          }}>
+                            {/* Gridlines */}
+                            <div style={{
+                              position: "absolute",
+                              inset: 0,
+                              background: "linear-gradient(to right, rgba(255,255,255,0.03) 1px, transparent 1px) 0 0 / 33.3% 100%, linear-gradient(to bottom, rgba(255,255,255,0.03) 1px, transparent 1px) 0 0 / 100% 33.3%",
+                              pointerEvents: "none"
+                            }} />
 
-                          <span style={{ fontSize: "0.75rem", fontWeight: "600", color: "#fff" }}>
-                            {seatView.angle} Perspective
-                          </span>
-                          <span style={{ fontSize: "0.65rem", color: "var(--text-muted)", marginTop: "2px" }}>
-                            {seatView.viewQuality}
-                          </span>
+                            {/* Viewport Crosshair */}
+                            <div style={{
+                              position: "absolute",
+                              left: "50%",
+                              top: "50%",
+                              transform: "translate(-50%, -50%)",
+                              width: "16px",
+                              height: "16px",
+                              border: "1px solid rgba(212, 175, 55, 0.25)",
+                              borderRadius: "50%",
+                              display: "flex",
+                              justifyContent: "center",
+                              alignItems: "center"
+                            }}>
+                              <div style={{ width: "2px", height: "2px", background: "var(--accent-gold)", borderRadius: "50%" }} />
+                            </div>
+
+                            {/* Top HUD Row */}
+                            <div style={{ display: "flex", justifyContent: "space-between", width: "100%", textShadow: "0 1px 3px rgba(0,0,0,0.8)" }}>
+                              <span style={{ fontSize: "0.6rem", fontFamily: "monospace", color: "#fff", background: "rgba(0,0,0,0.4)", padding: "1px 6px", borderRadius: "4px" }}>
+                                CAM: SEAT {lastSeat.id}
+                              </span>
+                              <span style={{ fontSize: "0.6rem", fontFamily: "monospace", color: "#fff", background: "rgba(0,0,0,0.4)", padding: "1px 6px", borderRadius: "4px" }}>
+                                DIST: {seatView.distance}
+                              </span>
+                            </div>
+
+                            {/* Bottom HUD Row */}
+                            <div style={{ display: "flex", justifyContent: "space-between", width: "100%", textShadow: "0 1px 3px rgba(0,0,0,0.8)", alignItems: "flex-end" }}>
+                              <span style={{ fontSize: "0.6rem", fontFamily: "monospace", color: "var(--accent-gold)", background: "rgba(0,0,0,0.4)", padding: "1px 6px", borderRadius: "4px" }}>
+                                FOV: {cameraZoom === "0.5x" ? "90°" : cameraZoom === "3x" ? "25°" : "60°"}
+                              </span>
+                              <span style={{ fontSize: "0.6rem", fontFamily: "monospace", color: "#fff", background: "rgba(0,0,0,0.4)", padding: "1px 6px", borderRadius: "4px" }}>
+                                ZOM: {cameraZoom}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Focal Length Controls */}
+                        <div style={{ display: "flex", gap: "8px", width: "100%" }}>
+                          {["0.5x", "1x", "3x"].map((zoom) => (
+                            <button
+                              key={zoom}
+                              type="button"
+                              onClick={() => setCameraZoom(zoom)}
+                              style={{
+                                flex: 1,
+                                background: cameraZoom === zoom ? "var(--accent-gold)" : "rgba(255,255,255,0.03)",
+                                border: cameraZoom === zoom ? "1px solid var(--accent-gold)" : "1px solid var(--border-accent)",
+                                color: cameraZoom === zoom ? "#060813" : "var(--text-secondary)",
+                                borderRadius: "6px",
+                                padding: "6px 0",
+                                fontSize: "0.75rem",
+                                fontWeight: "600",
+                                cursor: "pointer",
+                                transition: "all 0.2s"
+                              }}
+                            >
+                              {zoom === "0.5x" ? "0.5x Wide" : zoom === "1x" ? "1.0x Normal" : "3.0x Zoom"}
+                            </button>
+                          ))}
                         </div>
 
                         <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)", margin: 0, fontWeight: "300", lineHeight: "1.4" }}>
-                          {seatView.description} Enjoy a premium 3D sound distribution and curated seat catering service.
+                          {seatView.description} Enjoy premium 3D spatial sound distribution and dynamic seat catering service.
                         </p>
 
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "12px", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "12px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "4px", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "12px" }}>
                           <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Acoustics profile:</span>
                           <button
+                            key="audition"
+                            type="button"
                             onClick={() => playAcousticSample(lastSeat.id)}
                             style={{
                               background: "rgba(212, 175, 55, 0.1)",
@@ -1315,6 +1431,233 @@ function EventDetail() {
           </div>
         </div>
       )}
+
+      {/* Full-Screen Lens Viewport Modal */}
+      {showFullScreenLens && selectedSeats.length > 0 && (() => {
+        const lastSeat = selectedSeats[selectedSeats.length - 1];
+        const seatView = calculateSeatView(lastSeat.id);
+        if (!seatView) return null;
+        return (
+          <div style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(6, 8, 19, 0.9)",
+            backdropFilter: "blur(15px)",
+            zIndex: 1100,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: "24px"
+          }}>
+            <div className="glass-panel" style={{
+              width: "100%",
+              maxWidth: "960px",
+              background: "var(--glass-bg)",
+              border: "1px solid var(--glass-border)",
+              borderRadius: "20px",
+              boxShadow: "0 25px 60px rgba(0, 0, 0, 0.8)",
+              overflow: "hidden",
+              display: "flex",
+              flexDirection: "column",
+              gap: "20px",
+              padding: "24px"
+            }}>
+              {/* Modal Header */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <Camera size={18} color="var(--accent-gold)" />
+                  <div>
+                    <h3 style={{ fontFamily: "var(--font-serif)", fontSize: "1.4rem", color: "var(--text-primary)", margin: 0 }}>
+                      Backstage Viewfinder Lens
+                    </h3>
+                    <span style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+                      Event: {event?.title || "Premium Concert"} | Seat: <strong style={{ color: "var(--accent-gold)" }}>{lastSeat.id}</strong> (Tier: {lastSeat.tier})
+                    </span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowFullScreenLens(false)}
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid var(--border-accent)",
+                    color: "var(--text-primary)",
+                    borderRadius: "50%",
+                    width: "36px",
+                    height: "36px",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
+                  className="nav-link"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Viewport Frame */}
+              <div style={{
+                position: "relative",
+                aspectRatio: "16/9",
+                width: "100%",
+                background: "#020205",
+                borderRadius: "12px",
+                border: "1px solid rgba(255,255,255,0.08)",
+                overflow: "hidden",
+                boxShadow: "0 10px 30px rgba(0,0,0,0.6)"
+              }}>
+                {/* L-shaped Viewfinder Corners */}
+                <div style={{ position: "absolute", left: "15px", top: "15px", width: "20px", height: "20px", borderLeft: "2px solid rgba(212, 175, 55, 0.4)", borderTop: "2px solid rgba(212, 175, 55, 0.4)", pointerEvents: "none" }} />
+                <div style={{ position: "absolute", right: "15px", top: "15px", width: "20px", height: "20px", borderRight: "2px solid rgba(212, 175, 55, 0.4)", borderTop: "2px solid rgba(212, 175, 55, 0.4)", pointerEvents: "none" }} />
+                <div style={{ position: "absolute", left: "15px", bottom: "15px", width: "20px", height: "20px", borderLeft: "2px solid rgba(212, 175, 55, 0.4)", borderBottom: "2px solid rgba(212, 175, 55, 0.4)", pointerEvents: "none" }} />
+                <div style={{ position: "absolute", right: "15px", bottom: "15px", width: "20px", height: "20px", borderRight: "2px solid rgba(212, 175, 55, 0.4)", borderBottom: "2px solid rgba(212, 175, 55, 0.4)", pointerEvents: "none" }} />
+
+                {/* Perspective Image container with Zoom Scale */}
+                <div style={{
+                  width: "100%",
+                  height: "100%",
+                  transform: cameraZoom === "0.5x" ? "scale(0.85)" : cameraZoom === "3x" ? "scale(1.7)" : "scale(1.1)",
+                  transition: "transform 0.45s cubic-bezier(0.25, 1, 0.5, 1)",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center"
+                }}>
+                  <img
+                    src={seatView.imagePath}
+                    alt="Stage View Render"
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                </div>
+
+                {/* Grid Overlay (3x3 grid) */}
+                <div style={{
+                  position: "absolute",
+                  inset: 0,
+                  background: "linear-gradient(to right, rgba(255,255,255,0.06) 1px, transparent 1px) 0 0 / 33.3% 100%, linear-gradient(to bottom, rgba(255,255,255,0.06) 1px, transparent 1px) 0 0 / 100% 33.3%",
+                  pointerEvents: "none"
+                }} />
+
+                {/* Viewfinder crosshairs */}
+                <div style={{
+                  position: "absolute",
+                  left: "50%",
+                  top: "50%",
+                  transform: "translate(-50%, -50%)",
+                  width: "40px",
+                  height: "40px",
+                  border: "1px dashed rgba(212, 175, 55, 0.4)",
+                  borderRadius: "50%",
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  pointerEvents: "none"
+                }}>
+                  <div style={{ width: "4px", height: "4px", background: "var(--accent-gold)", borderRadius: "50%" }} />
+                </div>
+
+                {/* Interactive HUD Overlay */}
+                <div style={{
+                  position: "absolute",
+                  inset: 0,
+                  pointerEvents: "none",
+                  display: "flex",
+                  flexDirection: "column",
+                  justifyContent: "space-between",
+                  padding: "20px",
+                  textShadow: "0 1px 4px rgba(0,0,0,0.9)",
+                  fontFamily: "monospace"
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", color: "#fff" }}>
+                    <div style={{ display: "flex", gap: "16px", background: "rgba(0,0,0,0.6)", padding: "4px 8px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.1)" }}>
+                      <span>SYS: ONLINE</span>
+                      <span>FOV: {cameraZoom === "0.5x" ? "90°" : cameraZoom === "3x" ? "25°" : "60°"}</span>
+                    </div>
+                    <div style={{ display: "flex", gap: "16px", background: "rgba(0,0,0,0.6)", padding: "4px 8px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.1)" }}>
+                      <span>SEAT: {lastSeat.id}</span>
+                      <span>DIST: {seatView.distance}</span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8rem", color: "#fff", alignItems: "flex-end" }}>
+                    <div style={{ display: "flex", gap: "16px", background: "rgba(0,0,0,0.6)", padding: "4px 8px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.1)" }}>
+                      <span>LATENCY: 8ms</span>
+                      <span>FPS: 60.0</span>
+                    </div>
+                    <div style={{ display: "flex", gap: "16px", background: "rgba(0,0,0,0.6)", padding: "4px 8px", borderRadius: "6px", border: "1px solid rgba(255,255,255,0.1)" }}>
+                      <span style={{ color: "var(--accent-gold)" }}>ZOOM: {cameraZoom}</span>
+                      <span>REC: STBY</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Controls / Stats Row */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "24px", alignItems: "center" }}>
+                {/* Focal Controls */}
+                <div>
+                  <span style={{ display: "block", fontSize: "0.75rem", textTransform: "uppercase", color: "var(--text-muted)", letterSpacing: "1px", marginBottom: "8px", fontWeight: "600" }}>
+                    LENS FOCAL LENGTH
+                  </span>
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    {["0.5x", "1x", "3x"].map((zoom) => (
+                      <button
+                        key={zoom}
+                        type="button"
+                        onClick={() => setCameraZoom(zoom)}
+                        style={{
+                          flex: 1,
+                          background: cameraZoom === zoom ? "var(--accent-gold)" : "rgba(255,255,255,0.03)",
+                          border: cameraZoom === zoom ? "1px solid var(--accent-gold)" : "1px solid var(--border-accent)",
+                          color: cameraZoom === zoom ? "#060813" : "var(--text-secondary)",
+                          borderRadius: "8px",
+                          padding: "8px 0",
+                          fontSize: "0.8rem",
+                          fontWeight: "700",
+                          cursor: "pointer",
+                          transition: "all 0.2s"
+                        }}
+                      >
+                        {zoom}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* View Details Deck */}
+                <div style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr 1fr",
+                  gap: "16px",
+                  background: "rgba(255,255,255,0.02)",
+                  border: "1px solid var(--border-accent)",
+                  borderRadius: "12px",
+                  padding: "12px 20px"
+                }}>
+                  <div>
+                    <span style={{ display: "block", fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Sightline Quality</span>
+                    <span style={{ display: "block", fontSize: "0.95rem", fontWeight: "600", color: "#10b981", marginTop: "2px" }}>
+                      {"ABC".includes(lastSeat.id.charAt(0)) ? "100% Direct" : "Clear (Elevated)"}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ display: "block", fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Stage Distance</span>
+                    <span style={{ display: "block", fontSize: "0.95rem", fontWeight: "600", color: "var(--text-primary)", marginTop: "2px" }}>
+                      {seatView.distance}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ display: "block", fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "uppercase" }}>Acoustic Rating</span>
+                    <span style={{ display: "block", fontSize: "0.95rem", fontWeight: "600", color: "var(--accent-gold)", marginTop: "2px" }}>
+                      {"ABC".includes(lastSeat.id.charAt(0)) ? "A+ Studio" : "A Live Lounge"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     </main>
   );
